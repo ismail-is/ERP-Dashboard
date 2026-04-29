@@ -17,7 +17,8 @@ import {
   Briefcase,
   Search,
   Bell,
-  User
+  User,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from './utils/cn';
@@ -28,6 +29,7 @@ function App() {
   });
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [data, setData] = useState({ employees: [], clients: [], expenses: [], password: '' });
   const [loading, setLoading] = useState(true);
 
@@ -171,6 +173,8 @@ function App() {
       <Sidebar 
         collapsed={collapsed}
         setCollapsed={setCollapsed}
+        mobileMenuOpen={mobileMenuOpen}
+        setMobileMenuOpen={setMobileMenuOpen}
         onLogout={() => {
           setIsAuthenticated(false);
           localStorage.removeItem('isLoggedIn');
@@ -179,17 +183,26 @@ function App() {
       
       <main className={cn(
         "flex-1 transition-all duration-300 min-h-screen",
-        collapsed ? "ml-20" : "ml-20 lg:ml-64"
+        "ml-0",
+        collapsed ? "lg:ml-20" : "lg:ml-64"
       )}>
         {/* Header */}
         <header className="bg-white border-b border-gray-100 px-4 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-40">
-          <div className="relative w-full sm:w-96 sm:max-w-[40%]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-            <input 
-              type="text" 
-              placeholder="Search data..." 
-              className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-black transition-all"
-            />
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button 
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden p-2 -ml-2 text-gray-500 hover:text-black hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <Menu size={24} />
+            </button>
+            <div className="relative w-full sm:w-96 sm:max-w-[40%] flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search data..." 
+                className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-black transition-all"
+              />
+            </div>
           </div>
           <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
             <button className="relative p-2 text-gray-400 hover:text-black transition-colors">

@@ -301,8 +301,8 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
         </div>
         
         {pieData.length > 0 && (
-          <div className="premium-card h-[250px] flex items-center">
-            <div className="w-1/3 text-center px-4">
+          <div className="premium-card min-h-[250px] flex flex-col md:flex-row items-center py-6">
+            <div className="w-full md:w-1/3 text-center px-4 mb-6 md:mb-0">
               <h3 className="font-bold text-lg">Expense Distribution</h3>
               <p className="text-sm text-gray-500 mb-4">By Project/Reference</p>
               <div className="text-left space-y-2 max-h-32 overflow-y-auto">
@@ -317,21 +317,23 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                 ))}
               </div>
             </div>
-            <ResponsiveContainer width="66%" height="100%">
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                </Pie>
-                <RechartsTooltip formatter={(val) => `₹${val.toLocaleString()}`} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="w-full md:w-2/3 h-[250px] md:h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                  </Pie>
+                  <RechartsTooltip formatter={(val) => `₹${val.toLocaleString()}`} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         )}
 
         {/* Ledger Table with Search and Month Filter */}
         <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden">
-          <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-bold">{selectedEmployee}'s Ledger</h3>
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
               <div className="relative w-full sm:w-auto">
@@ -398,8 +400,8 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
     if (!isEditing) return null;
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
-          <h3 className="text-xl font-bold mb-6">{formMode === 'edit' ? 'Edit Entry' : 'Add Entry'}</h3>
+        <div className="bg-white rounded-2xl w-full max-w-2xl p-4 sm:p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+          <h3 className="text-xl font-bold mb-4 sm:mb-6">{formMode === 'edit' ? 'Edit Entry' : 'Add Entry'}</h3>
           <form onSubmit={handleSaveRow} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="col-span-1 sm:col-span-2">
