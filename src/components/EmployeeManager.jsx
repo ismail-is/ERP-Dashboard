@@ -275,7 +275,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
           <button onClick={() => { setSelectedEmployee(null); setSearchQuery(''); setSelectedMonth('All'); setIsEditing(false); }} className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors">
             <ArrowLeft size={20} /> Back to All Employees
           </button>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             <button onClick={() => handleExportPDF(rows, `${selectedEmployee}_Ledger`)} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium transition-colors">
               <Download size={16} /> Export PDF
             </button>
@@ -333,11 +333,11 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
         <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-hidden">
           <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <h3 className="text-lg font-bold">{selectedEmployee}'s Ledger</h3>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-auto">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <select 
-                  className="pl-9 pr-8 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-black appearance-none"
+                  className="w-full sm:w-auto pl-9 pr-8 py-2 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-black appearance-none"
                   value={selectedMonth}
                   onChange={e => setSelectedMonth(e.target.value)}
                 >
@@ -350,7 +350,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                   ))}
                 </select>
               </div>
-              <div className="relative w-64">
+              <div className="relative w-full sm:w-64">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                 <input 
                   type="text" 
@@ -401,8 +401,8 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
         <div className="bg-white rounded-2xl w-full max-w-2xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
           <h3 className="text-xl font-bold mb-6">{formMode === 'edit' ? 'Edit Entry' : 'Add Entry'}</h3>
           <form onSubmit={handleSaveRow} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="col-span-1 sm:col-span-2">
                 <label className="block text-sm font-medium mb-1">Employee Name</label>
                 <input type="text" required list="employee-names" className="premium-input" value={formData['Employee Name'] || ''} onChange={e => setFormData({...formData, 'Employee Name': e.target.value})} />
                 <datalist id="employee-names">
@@ -490,7 +490,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
               ))}
             </select>
           </div>
-          <div className="relative w-48 sm:w-64">
+          <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input 
               type="text" 
@@ -500,10 +500,10 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
               className="w-full pl-9 pr-4 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-black"
             />
           </div>
-          <button onClick={() => handleExportPDF(employeeSummary, 'Employee_Summary')} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium transition-colors">
+          <button onClick={() => handleExportPDF(employeeSummary, 'Employee_Summary')} className="w-full sm:w-auto flex justify-center items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium transition-colors">
             <Download size={16} /> Export PDF
           </button>
-          <button onClick={() => openEditModal()} className="flex items-center gap-2 premium-button py-2 text-sm">
+          <button onClick={() => openEditModal()} className="w-full sm:w-auto flex justify-center items-center gap-2 premium-button py-2 text-sm">
             <Plus size={16} /> Add Entry
           </button>
         </div>

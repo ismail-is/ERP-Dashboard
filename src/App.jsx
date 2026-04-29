@@ -179,11 +179,11 @@ function App() {
       
       <main className={cn(
         "flex-1 transition-all duration-300 min-h-screen",
-        collapsed ? "ml-20" : "ml-64"
+        collapsed ? "ml-20" : "ml-20 lg:ml-64"
       )}>
         {/* Header */}
-        <header className="bg-white border-b border-gray-100 px-8 py-4 flex items-center justify-between sticky top-0 z-40">
-          <div className="relative w-96 max-w-[40%]">
+        <header className="bg-white border-b border-gray-100 px-4 sm:px-8 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 sticky top-0 z-40">
+          <div className="relative w-full sm:w-96 sm:max-w-[40%]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
             <input 
               type="text" 
@@ -191,13 +191,13 @@ function App() {
               className="w-full bg-gray-50 border-none rounded-xl pl-10 pr-4 py-2 text-sm focus:ring-2 focus:ring-black transition-all"
             />
           </div>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto">
             <button className="relative p-2 text-gray-400 hover:text-black transition-colors">
               <Bell size={20} />
               <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
-            <div className="flex items-center gap-3 pl-6 border-l border-gray-100">
-              <div className="text-right">
+            <div className="flex items-center gap-3 pl-4 sm:pl-6 border-l border-gray-100">
+              <div className="text-right hidden sm:block">
                 <p className="text-sm font-bold">Admin User</p>
                 <p className="text-xs text-gray-400">Main Account</p>
               </div>
@@ -208,7 +208,7 @@ function App() {
           </div>
         </header>
 
-        <div className="p-8 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-8 max-w-7xl mx-auto">
           <div className="mb-8">
             <h2 className="text-2xl font-bold tracking-tight text-black capitalize">
               {getPageTitle()}

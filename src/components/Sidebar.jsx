@@ -25,10 +25,10 @@ const Sidebar = ({ collapsed, setCollapsed, onLogout }) => {
   return (
     <div className={cn(
       "h-screen bg-white border-r border-gray-100 transition-all duration-300 flex flex-col fixed left-0 top-0 z-50",
-      collapsed ? "w-20" : "w-64"
+      collapsed ? "w-20" : "w-20 lg:w-64"
     )}>
       <div className="p-6 flex items-center justify-between">
-        {!collapsed && <span className="font-bold text-xl tracking-tight">ERP CORE</span>}
+        {!collapsed && <span className="font-bold text-xl tracking-tight hidden lg:block">ERP CORE</span>}
         <button 
           onClick={() => setCollapsed(!collapsed)}
           className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -52,10 +52,10 @@ const Sidebar = ({ collapsed, setCollapsed, onLogout }) => {
               )}
             >
               <item.icon size={20} className={cn(
-                "transition-colors",
+                "transition-colors min-w-[20px]",
                 isActive ? "text-white" : "text-gray-400 group-hover:text-black"
               )} />
-              {!collapsed && <span className="font-medium">{item.label}</span>}
+              {!collapsed && <span className="font-medium hidden lg:block">{item.label}</span>}
             </Link>
           );
         })}
@@ -66,11 +66,11 @@ const Sidebar = ({ collapsed, setCollapsed, onLogout }) => {
           onClick={onLogout}
           className={cn(
             "w-full flex items-center gap-4 px-4 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all",
-            collapsed && "justify-center"
+            "justify-center", !collapsed && "lg:justify-start"
           )}
         >
-          <LogOut size={20} />
-          {!collapsed && <span className="font-medium">Logout</span>}
+          <LogOut size={20} className="min-w-[20px]" />
+          {!collapsed && <span className="font-medium hidden lg:block">Logout</span>}
         </button>
       </div>
     </div>
