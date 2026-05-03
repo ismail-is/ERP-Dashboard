@@ -8,6 +8,7 @@ import { ChartComponent } from './components/ChartComponent';
 import { DataTable } from './components/DataTable';
 import { EmployeeManager } from './components/EmployeeManager';
 import { ClientManager } from './components/ClientManager';
+import { ExpenseManager } from './components/ExpenseManager';
 import { fetchData } from './services/googleSheets';
 import {
   DollarSign,
@@ -154,15 +155,7 @@ function App() {
 
         {/* ─── Expenses ──────────────────────────────────── */}
         <Route path="/expenses" element={
-          <DataTable
-            title="Expense Tracker"
-            data={data.expenses}
-            columns={[
-              { header: 'Category', accessor: 'category' },
-              { header: 'Amount',   render: (row) => `$${Number(row.amount || 0).toLocaleString()}` },
-              { header: 'Date',     accessor: 'date' }
-            ]}
-          />
+          <ExpenseManager expensesData={data.expenses} onDataChanged={loadData} />
         } />
       </Routes>
     );
