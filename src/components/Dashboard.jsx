@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { cn } from '../utils/cn';
 import {
-  TrendingUp, TrendingDown, Wallet, DollarSign,
-  Users, Briefcase, Receipt, CheckCircle, Clock,
-  AlertCircle, ArrowRight, IndianRupee, Activity
+  TrendingUp, TrendingDown, Wallet,
+  Users, Briefcase, Receipt,
+  ArrowRight, IndianRupee, Activity
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -17,7 +17,7 @@ const fmt = (v) => `₹${Math.floor(Number(v)||0).toLocaleString('en-IN')}`;
 
 const parseDate = (s) => { if (!s) return null; const d = new Date(s); return isNaN(d.getTime()) ? null : d; };
 
-export const Dashboard = ({ data, financials }) => {
+export const Dashboard = ({ data }) => {
   const employees = data.employees || [];
   const clients   = data.clients   || [];
   const expenses  = data.expenses  || [];
@@ -78,7 +78,11 @@ export const Dashboard = ({ data, financials }) => {
 
   /* ── Recent expenses (last 5) ────────────────── */
   const recentExpenses = useMemo(() =>
-    [...expenses].sort((a,b) => (parseDate(b.date)||0) - (parseDate(a.date)||0)).slice(0,5),
+    [...expenses].sort((a,b) => {
+      const da = parseDate(a.date)?.getTime() || 0;
+      const db = parseDate(b.date)?.getTime() || 0;
+      return db - da;
+    }).slice(0,5),
   [expenses]);
 
   /* ── Recent clients (last 5) ─────────────────── */
@@ -91,18 +95,19 @@ export const Dashboard = ({ data, financials }) => {
 
       {/* ── Row 1: 4 KPI cards ────────────────────── */}
       <div className="kpi-grid stagger-children">
-        <KpiCard icon={TrendingUp}   label="Total Revenue"   value={fmt(totalRevenue)}  sub={`${clients.length} clients`}    trend="+8%"  trendUp />
-        <KpiCard icon={TrendingDown} label="Total Expenses"  value={fmt(totalExpenses)} sub={`${expenses.length} entries`}   trend="-5%"  trendUp={false} />
-        <KpiCard icon={Wallet}       label="Net Balance"     value={fmt(netBalance)}    sub="Revenue – Expenses"             colored={netBalance >= 0} />
-        <KpiCard icon={Users}        label="Employees"       value={uniqueEmployees}    sub={`${employees.length} ledger rows`} />
+        <KpiCard icon={TrendingUp}   label="Total Revenue"   value={fmt(totalRevenue)}  sub={`${clients.length} clients`}      trend="+8%"  trendUp />
+        <KpiCard icon={TrendingDown} label="Total Expenses"  value={fmt(totalExpenses)} sub={`${expenses.length} entries`}     trend="-5%"  trendUp={false} />
+        <KpiCard icon={Wallet}       label="Net Balance"     value={fmt(Math.abs(netBalance))} sub={netBalance >= 0 ? 'Surplus' : 'Deficit'} colored={netBalance >= 0 ? true : false} />
+        <KpiCard icon={Users}        label="Staff Members"   value={uniqueEmployees}    sub={`${employees.length} ledger rows`} />
       </div>
 
       {/* ── Row 2: Monthly Expense Trend + Client Status Pie ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="premium-card lg:col-span-2" style={{ height: 'clamp(220px,28vw,280px)' }}>
+        <div className="premium-card lg:col-span-2 flex flex-col" style={{ minHeight: '240px' }}>
           <SectionHeader title="Monthly Expense Trend" icon={Activity} link="/expenses" />
+          <div className="flex-1" style={{ minHeight: 0 }}>
           {monthlyExpense.length > 0 ? (
-            <ResponsiveContainer width="100%" height="80%">
+            <ResponsiveContainer width="100%" height={180}>
               <LineChart data={monthlyExpense} margin={{ top: 4, right: 8, left: -22, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#9ca3af' }} />
@@ -112,12 +117,14 @@ export const Dashboard = ({ data, financials }) => {
               </LineChart>
             </ResponsiveContainer>
           ) : <Empty text="No expense data yet" />}
+          </div>
         </div>
 
-        <div className="premium-card" style={{ height: 'clamp(220px,28vw,280px)' }}>
+        <div className="premium-card flex flex-col" style={{ minHeight: '240px' }}>
           <SectionHeader title="Client Status" icon={Briefcase} link="/clients" />
+          <div className="flex-1" style={{ minHeight: 0 }}>
           {clientStatus.length > 0 ? (
-            <ResponsiveContainer width="100%" height="82%">
+            <ResponsiveContainer width="100%" height={180}>
               <PieChart>
                 <Pie data={clientStatus} cx="50%" cy="50%" innerRadius="38%" outerRadius="60%" paddingAngle={3} dataKey="value">
                   {clientStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
@@ -127,15 +134,17 @@ export const Dashboard = ({ data, financials }) => {
               </PieChart>
             </ResponsiveContainer>
           ) : <Empty text="No client data yet" />}
+          </div>
         </div>
       </div>
 
       {/* ── Row 3: Revenue by Client (bar) + Expense by Category ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="premium-card" style={{ height: 'clamp(220px,26vw,270px)' }}>
+        <div className="premium-card flex flex-col" style={{ minHeight: '240px' }}>
           <SectionHeader title="Revenue by Client" icon={IndianRupee} link="/clients" />
+          <div className="flex-1" style={{ minHeight: 0 }}>
           {revenueByClient.length > 0 ? (
-            <ResponsiveContainer width="100%" height="80%">
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={revenueByClient} margin={{ top: 4, right: 5, left: -22, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
@@ -145,12 +154,14 @@ export const Dashboard = ({ data, financials }) => {
               </BarChart>
             </ResponsiveContainer>
           ) : <Empty text="No client data yet" />}
+          </div>
         </div>
 
-        <div className="premium-card" style={{ height: 'clamp(220px,26vw,270px)' }}>
+        <div className="premium-card flex flex-col" style={{ minHeight: '240px' }}>
           <SectionHeader title="Expenses by Category" icon={Receipt} link="/expenses" />
+          <div className="flex-1" style={{ minHeight: 0 }}>
           {expByCategory.length > 0 ? (
-            <ResponsiveContainer width="100%" height="80%">
+            <ResponsiveContainer width="100%" height={180}>
               <BarChart data={expByCategory} layout="vertical" margin={{ top: 4, right: 10, left: 10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9ca3af' }} />
@@ -160,6 +171,7 @@ export const Dashboard = ({ data, financials }) => {
               </BarChart>
             </ResponsiveContainer>
           ) : <Empty text="No expense data yet" />}
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Login from './pages/Login';
@@ -38,20 +38,7 @@ function App() {
     }
   };
 
-  const calculateFinancials = () => {
-    const expenses     = data.expenses || [];
-    const clients      = data.clients  || [];
-    const totalExpenses = expenses.reduce((s, e)  => s + Number(e.amount  || 0), 0);
-    const totalRevenue  = clients.reduce((s, c)   => s + Number(c.amount  || 0), 0);
-    const netBalance    = totalRevenue - totalExpenses;
-    return {
-      expenses: `₹${totalExpenses.toLocaleString('en-IN')}`,
-      revenue:  `₹${totalRevenue.toLocaleString('en-IN')}`,
-      balance:  `₹${netBalance.toLocaleString('en-IN')}`
-    };
-  };
 
-  const financials = calculateFinancials();
 
   if (!isAuthenticated) {
     return (
@@ -97,7 +84,7 @@ function App() {
     return (
       <Routes location={location} key={location.pathname}>
         {/* Dashboard */}
-        <Route path="/" element={<Dashboard data={data} financials={financials} />} />
+        <Route path="/" element={<Dashboard data={data} />} />
 
         <Route path="/employees" element={
           <EmployeeManager employeesData={data.employees} onDataChanged={loadData} />
@@ -280,7 +267,7 @@ function App() {
       {/* Sidebar offset via inline style for desktop */}
       <style>{`
         @media (min-width: 1024px) {
-          .main-content { margin-left: ${collapsed ? '72px' : '260px'}; }
+          .main-content { margin-left: ${collapsed ? '72px' : '260px'} !important; }
         }
       `}</style>
     </div>
