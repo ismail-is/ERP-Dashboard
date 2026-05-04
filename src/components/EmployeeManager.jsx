@@ -4,7 +4,7 @@ import { DataTable } from './DataTable';
 import { cn } from '../utils/cn';
 import { updateSheetData } from '../services/googleSheets';
 import { ArrowLeft, Download, Plus, Trash2, Edit2, Search, Calendar, X } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,19 +14,16 @@ const parseDateObj = (dateStr) => {
   let d = new Date(dateStr);
   if (!isNaN(d.getTime())) return d;
   const parts = String(dateStr).split(/[-/]/);
-  if (parts.length === 3) {
-    d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-    if (!isNaN(d.getTime())) return d;
-  }
+  if (parts.length === 3) { d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`); if (!isNaN(d.getTime())) return d; }
   return new Date(0);
 };
 
 const formatLocalYMD = (dateObj) => {
-  if (isNaN(dateObj.getTime())) return '';
+  if (isNaN(dateObj?.getTime())) return '';
   return dateObj.getFullYear() + '-' + String(dateObj.getMonth() + 1).padStart(2, '0') + '-' + String(dateObj.getDate()).padStart(2, '0');
 };
 
-const COLORS = ['#000000', '#4b5563', '#9ca3af', '#d1d5db', '#111827'];
+const COLORS = ['#111827', '#374151', '#6b7280', '#9ca3af', '#d1d5db'];
 
 export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -51,11 +48,8 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
     if (mainSelectedMonth !== 'All') {
       filteredData = filteredData.filter(r => {
         if (!r.Date) return false;
-        try {
-          const d = parseDateObj(r.Date);
-          if (isNaN(d.getTime())) return false;
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === mainSelectedMonth;
-        } catch { return false; }
+        try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return false; return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === mainSelectedMonth; }
+        catch { return false; }
       });
     }
     if (mainSearchQuery) {
@@ -67,7 +61,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
       const rawName = row['Employee Name']?.trim() || 'Unassigned';
       const key = rawName.toLowerCase();
       if (!summaryMap[key]) summaryMap[key] = { name: rawName, totalGiven: 0, totalExpense: 0, balance: 0, rows: [] };
-      summaryMap[key].totalGiven += Number(row['Cash Given (₹)'] || 0);
+      summaryMap[key].totalGiven   += Number(row['Cash Given (₹)'] || 0);
       summaryMap[key].totalExpense += Number(row['Expense (₹)'] || 0);
       summaryMap[key].balance = summaryMap[key].totalGiven - summaryMap[key].totalExpense;
       summaryMap[key].rows.push(row);
@@ -76,20 +70,19 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   }, [employeesData, mainSelectedMonth, mainSearchQuery]);
 
   const graphData = useMemo(() =>
-    employeeSummary.map(emp => ({ name: emp.name, Cash: emp.totalGiven, Expense: emp.totalExpense })),
+    employeeSummary.map(emp => ({ name: emp.name.split(' ')[0], Cash: emp.totalGiven, Expense: emp.totalExpense })),
   [employeeSummary]);
 
   const handleExportPDF = (dataToExport, title) => {
-    if (!dataToExport || dataToExport.length === 0) return toast.error('No data to export');
+    if (!dataToExport?.length) return toast.error('No data to export');
     const doc = new jsPDF();
     doc.text(`Report: ${title}`, 14, 15);
     const headers = Object.keys(dataToExport[0]).filter(k => k !== 'id' && k !== 'Src Row');
-    const tableData = dataToExport.map(row => headers.map(h => {
-      let val = row[h];
-      if (h === 'Date' && val) return formatLocalYMD(parseDateObj(val));
-      return val || '';
-    }));
-    autoTable(doc, { head: [headers], body: tableData, startY: 20, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [0, 0, 0] } });
+    autoTable(doc, {
+      head: [headers],
+      body: dataToExport.map(row => headers.map(h => { let v = row[h]; if (h === 'Date' && v) return formatLocalYMD(parseDateObj(v)); return v || ''; })),
+      startY: 20, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [17, 24, 39] }
+    });
     doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
     toast.success('PDF Downloaded!');
   };
@@ -97,51 +90,38 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   const handleSaveRow = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    const action = formMode;
     const dataToSave = { ...formData };
-    Object.keys(formData).forEach(key => {
-      dataToSave[key + '\n'] = formData[key];
-      dataToSave[key + ' '] = formData[key];
-    });
-    if (action === 'add') {
+    Object.keys(formData).forEach(k => { dataToSave[k + '\n'] = formData[k]; dataToSave[k + ' '] = formData[k]; });
+    if (formMode === 'add') {
       dataToSave['Src Row'] = Date.now().toString();
-      if (!dataToSave['Balance After Row (₹)']) {
+      if (!dataToSave['Balance After Row (₹)'])
         dataToSave['Balance After Row (₹)'] = Number(dataToSave['Cash Given (₹)'] || 0) - Number(dataToSave['Expense (₹)'] || 0);
-      }
     }
-    const loadingToast = toast.loading('Saving…');
+    const lt = toast.loading('Saving…');
     try {
-      const result = await updateSheetData(action, 'Employees', dataToSave);
+      const result = await updateSheetData(formMode, 'Employees', dataToSave);
       if (result.status === 'error') throw new Error(result.message);
-      toast.success(action === 'add' ? 'Entry added!' : 'Entry updated!', { id: loadingToast });
-      setIsEditing(false);
-      setFormData({});
-      onDataChanged();
+      toast.success(formMode === 'add' ? 'Entry added!' : 'Entry updated!', { id: lt });
+      setIsEditing(false); setFormData({}); onDataChanged();
     } catch (err) {
-      toast.error('Error: ' + err.message, { id: loadingToast, duration: 8000 });
-    } finally {
-      setIsSubmitting(false);
-    }
+      toast.error('Error: ' + err.message, { id: lt, duration: 8000 });
+    } finally { setIsSubmitting(false); }
   };
 
   const handleDeleteRow = (row) => {
     toast((t) => (
       <div className="flex flex-col gap-3 text-center items-center p-1">
         <p className="font-bold text-sm">Delete this row?</p>
-        <div className="flex gap-3 w-full">
+        <div className="flex gap-2 w-full">
           <button className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold" onClick={() => toast.dismiss(t.id)}>Cancel</button>
-          <button className="flex-1 px-3 py-2 bg-black text-white rounded-xl text-xs font-bold" onClick={async () => {
+          <button className="flex-1 px-3 py-2 bg-gray-900 text-white rounded-xl text-xs font-bold" onClick={async () => {
             toast.dismiss(t.id);
-            setIsSubmitting(true);
             const lt = toast.loading('Deleting…');
             try {
               const result = await updateSheetData('delete', 'Employees', row);
               if (result.status === 'error') throw new Error(result.message);
-              toast.success('Deleted!', { id: lt });
-              onDataChanged();
-            } catch (err) {
-              toast.error('Error deleting.', { id: lt });
-            } finally { setIsSubmitting(false); }
+              toast.success('Deleted!', { id: lt }); onDataChanged();
+            } catch (err) { toast.error('Error deleting.', { id: lt }); }
           }}>Delete</button>
         </div>
       </div>
@@ -156,188 +136,142 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
       setFormData(editData);
     } else {
       setFormMode('add');
-      setFormData({
-        'Date': formatLocalYMD(new Date()),
-        'Employee Name': selectedEmployee || '',
-        'Project / Reference': '',
-        'Client / Vendor': '',
-        'Payment Mode': 'Cash',
-        'Cash Given (₹)': 0,
-        'Expense (₹)': 0,
-        'Balance After Row (₹)': 0,
-        'Status': 'Pending',
-        'Notes': ''
-      });
+      setFormData({ 'Date': formatLocalYMD(new Date()), 'Employee Name': selectedEmployee || '', 'Project / Reference': '', 'Client / Vendor': '', 'Payment Mode': 'Cash', 'Cash Given (₹)': 0, 'Expense (₹)': 0, 'Balance After Row (₹)': 0, 'Status': 'Pending', 'Notes': '' });
     }
     setIsEditing(true);
   };
 
-  /* ─── Modal (bottom sheet on mobile) ─── */
-  function renderModal() {
+  /* ── Modal ── */
+  const renderModal = () => {
     if (!isEditing) return null;
+    const field = (label, key, type = 'text', opts = {}) => (
+      <div className={opts.span2 ? 'sm:col-span-2' : ''}>
+        <label className="block text-sm font-bold mb-2 text-gray-700">{label}</label>
+        {opts.select ? (
+          <select className="premium-input" value={formData[key] || ''} onChange={e => setFormData({ ...formData, [key]: e.target.value })}>
+            {opts.options.map(o => <option key={o}>{o}</option>)}
+          </select>
+        ) : (
+          <input type={type} step={type === 'number' ? '0.01' : undefined} className="premium-input"
+            value={formData[key] || ''} onChange={e => setFormData({ ...formData, [key]: e.target.value })}
+            {...(opts.list ? { list: opts.list } : {})} />
+        )}
+        {opts.datalist && (
+          <datalist id={opts.list}>
+            {employeeSummary.filter(e => e.name && e.name !== 'Unassigned').map(e => <option key={e.name} value={e.name} />)}
+          </datalist>
+        )}
+      </div>
+    );
     return (
-      <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setIsEditing(false); }}>
+      <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setIsEditing(false); }}>
         <div className="modal-sheet">
-          {/* Handle bar for mobile */}
-          <div className="sm:hidden flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 bg-gray-200 rounded-full" />
-          </div>
+          <div className="modal-handle"><div className="modal-handle-bar" /></div>
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h3 className="text-lg font-bold">{formMode === 'edit' ? 'Edit Entry' : 'Add Entry'}</h3>
-            <button onClick={() => setIsEditing(false)} className="icon-btn text-gray-400 hover:text-black hover:bg-gray-100">
-              <X size={20} />
-            </button>
+            <h3 className="text-base font-black text-gray-900">{formMode === 'edit' ? 'Edit Entry' : 'Add Entry'}</h3>
+            <button onClick={() => setIsEditing(false)} className="icon-btn text-gray-400 hover:text-gray-900"><X size={18} strokeWidth={2} /></button>
           </div>
           <form onSubmit={handleSaveRow} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-semibold mb-1.5">Employee Name</label>
-                <input type="text" required list="employee-names" className="premium-input" value={formData['Employee Name'] || ''} onChange={e => setFormData({...formData, 'Employee Name': e.target.value})} />
-                <datalist id="employee-names">
-                  {employeeSummary.filter(e => e.name && e.name !== 'Unassigned').map(e => <option key={e.name} value={e.name} />)}
-                </datalist>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Date</label>
-                <input type="date" required className="premium-input" value={formData['Date'] || ''} onChange={e => setFormData({...formData, 'Date': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Payment Mode</label>
-                <select className="premium-input" value={formData['Payment Mode'] || 'Cash'} onChange={e => setFormData({...formData, 'Payment Mode': e.target.value})}>
-                  <option>Cash</option><option>UPI</option><option>Bank Transfer</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Project / Reference</label>
-                <input type="text" className="premium-input" value={formData['Project / Reference'] || ''} onChange={e => setFormData({...formData, 'Project / Reference': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Client / Vendor</label>
-                <input type="text" className="premium-input" value={formData['Client / Vendor'] || ''} onChange={e => setFormData({...formData, 'Client / Vendor': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Cash Given (₹)</label>
-                <input type="number" step="0.01" className="premium-input" value={formData['Cash Given (₹)'] || ''} onChange={e => setFormData({...formData, 'Cash Given (₹)': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Expense (₹)</label>
-                <input type="number" step="0.01" className="premium-input" value={formData['Expense (₹)'] || ''} onChange={e => setFormData({...formData, 'Expense (₹)': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Balance After Row (₹)</label>
-                <input type="number" step="0.01" className="premium-input" value={formData['Balance After Row (₹)'] || ''} onChange={e => setFormData({...formData, 'Balance After Row (₹)': e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1.5">Status</label>
-                <select className="premium-input" value={formData['Status'] || 'Pending'} onChange={e => setFormData({...formData, 'Status': e.target.value})}>
-                  <option>Pending</option><option>Completed</option>
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-semibold mb-1.5">Notes</label>
-                <input type="text" className="premium-input" value={formData['Notes'] || ''} onChange={e => setFormData({...formData, 'Notes': e.target.value})} />
-              </div>
+              {field('Employee Name', 'Employee Name', 'text', { span2: true, list: 'employee-names', datalist: true })}
+              {field('Date', 'Date', 'date')}
+              {field('Payment Mode', 'Payment Mode', 'text', { select: true, options: ['Cash', 'UPI', 'Bank Transfer'] })}
+              {field('Project / Reference', 'Project / Reference')}
+              {field('Client / Vendor', 'Client / Vendor')}
+              {field('Cash Given (₹)', 'Cash Given (₹)', 'number')}
+              {field('Expense (₹)', 'Expense (₹)', 'number')}
+              {field('Balance After Row (₹)', 'Balance After Row (₹)', 'number')}
+              {field('Status', 'Status', 'text', { select: true, options: ['Pending', 'Completed'] })}
+              {field('Notes', 'Notes', 'text', { span2: true })}
             </div>
-            <div className="flex gap-3 pt-4 border-t border-gray-100 pb-2">
-              <button type="button" onClick={() => setIsEditing(false)} className="flex-1 py-3 text-sm font-semibold border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors min-h-[44px]">Cancel</button>
-              <button type="submit" disabled={isSubmitting} className="flex-1 premium-button">
-                {isSubmitting ? 'Saving…' : 'Save Entry'}
-              </button>
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setIsEditing(false)} className="ghost-button flex-1 justify-center">Cancel</button>
+              <button type="submit" disabled={isSubmitting} className="premium-button flex-1">{isSubmitting ? 'Saving…' : 'Save Entry'}</button>
             </div>
           </form>
         </div>
       </div>
     );
-  }
+  };
 
-  /* ─── Employee Detail View ─── */
+  /* ── Employee Detail View ── */
   if (selectedEmployee) {
     const employeeData = employeeSummary.find(e => e.name === selectedEmployee);
     let rows = employeeData ? [...employeeData.rows] : [];
     rows.sort((a, b) => parseDateObj(b.Date) - parseDateObj(a.Date));
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      rows = rows.filter(r => (r['Project / Reference'] || '').toLowerCase().includes(q) || (r['Client / Vendor'] || '').toLowerCase().includes(q));
-    }
+    if (searchQuery) { const q = searchQuery.toLowerCase(); rows = rows.filter(r => (r['Project / Reference'] || '').toLowerCase().includes(q) || (r['Client / Vendor'] || '').toLowerCase().includes(q)); }
     if (selectedMonth !== 'All') {
       rows = rows.filter(r => {
         if (!r.Date) return false;
-        try {
-          const d = parseDateObj(r.Date);
-          if (isNaN(d.getTime())) return false;
-          return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === selectedMonth;
-        } catch { return false; }
+        try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return false; return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === selectedMonth; }
+        catch { return false; }
       });
     }
-
     const pieDataMap = {};
-    rows.forEach(r => {
-      const exp = Number(r['Expense (₹)'] || 0);
-      if (exp > 0) { const key = r['Project / Reference'] || 'Other'; pieDataMap[key] = (pieDataMap[key] || 0) + exp; }
-    });
+    rows.forEach(r => { const exp = Number(r['Expense (₹)'] || 0); if (exp > 0) { const k = r['Project / Reference'] || 'Other'; pieDataMap[k] = (pieDataMap[k] || 0) + exp; } });
     const pieData = Object.keys(pieDataMap).map(k => ({ name: k, value: pieDataMap[k] }));
 
     return (
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header row */}
+      <div className="space-y-4 sm:space-y-5">
+        {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <button
-            onClick={() => { setSelectedEmployee(null); setSearchQuery(''); setSelectedMonth('All'); setIsEditing(false); }}
-            className="flex items-center gap-2 text-gray-500 hover:text-black transition-colors font-medium text-sm min-h-[44px]"
-          >
-            <ArrowLeft size={18} /> Back
+          <button onClick={() => { setSelectedEmployee(null); setSearchQuery(''); setSelectedMonth('All'); setIsEditing(false); }}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-900 transition-colors font-semibold text-sm min-h-[42px]">
+            <ArrowLeft size={18} strokeWidth={2} /> Back to Employees
           </button>
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => handleExportPDF(rows, `${selectedEmployee}_Ledger`)} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium transition-colors min-h-[44px]">
-              <Download size={15} /> <span className="hidden sm:inline">Export PDF</span>
+            <button onClick={() => handleExportPDF(rows, `${selectedEmployee}_Ledger`)} className="ghost-button text-sm">
+              <Download size={14} /> <span className="hidden sm:inline">Export PDF</span>
             </button>
             <button onClick={() => openEditModal()} className="premium-button text-sm">
-              <Plus size={15} /> Add Entry
+              <Plus size={14} strokeWidth={2.5} /> Add Entry
             </button>
           </div>
         </div>
 
-        {/* Stats strip */}
-        <div className="grid grid-cols-3 gap-3">
-          <div className="premium-card text-center py-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cash Given</p>
-            <p className="text-lg sm:text-xl font-bold truncate">₹{(employeeData?.totalGiven || 0).toLocaleString()}</p>
-          </div>
-          <div className="premium-card text-center py-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expense</p>
-            <p className="text-lg sm:text-xl font-bold truncate">₹{(employeeData?.totalExpense || 0).toLocaleString()}</p>
-          </div>
-          <div className="premium-card text-center py-4 border-2 border-black">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Balance</p>
-            <p className={cn('text-lg sm:text-xl font-bold truncate', (employeeData?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600')}>
-              ₹{(employeeData?.balance || 0).toLocaleString()}
-            </p>
-          </div>
+        {/* Name */}
+        <div>
+          <h2 className="text-xl sm:text-2xl font-black text-gray-900">{selectedEmployee}</h2>
+          <p className="text-sm text-gray-400 mt-0.5">Employee Ledger</p>
         </div>
 
-        {/* Pie chart */}
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Cash Given', value: employeeData?.totalGiven || 0, color: 'text-gray-900' },
+            { label: 'Expense', value: employeeData?.totalExpense || 0, color: 'text-red-600' },
+            { label: 'Balance', value: employeeData?.balance || 0, color: (employeeData?.balance || 0) >= 0 ? 'text-emerald-600' : 'text-red-600', highlight: true },
+          ].map(({ label, value, color, highlight }) => (
+            <div key={label} className={cn('premium-card text-center py-4', highlight && 'border-2 border-gray-900')}>
+              <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+              <p className={cn('text-base sm:text-xl font-black truncate', color)}>₹{value.toLocaleString()}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Pie */}
         {pieData.length > 0 && (
           <div className="premium-card">
-            <h3 className="font-bold text-sm mb-4">Expense Distribution</h3>
+            <h3 className="font-bold text-sm mb-4 text-gray-900">Expense Distribution</h3>
             <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="w-full sm:w-1/2 h-[200px]">
+              <div className="w-full sm:w-1/2 h-[180px] sm:h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" innerRadius={55} outerRadius={75} paddingAngle={5} dataKey="value">
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius="45%" outerRadius="68%" paddingAngle={4} dataKey="value">
                       {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                     </Pie>
-                    <RechartsTooltip formatter={(val) => `₹${val.toLocaleString()}`} />
+                    <RTooltip formatter={(val) => `₹${val.toLocaleString()}`} contentStyle={{ borderRadius: '12px', fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="w-full sm:w-1/2 space-y-2 max-h-32 overflow-y-auto">
+              <div className="w-full sm:w-1/2 space-y-2 max-h-32 overflow-y-auto no-scrollbar">
                 {pieData.map((entry, i) => (
                   <div key={i} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
-                      <span className="truncate max-w-[120px]">{entry.name}</span>
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                      <span className="truncate max-w-[120px] text-gray-600">{entry.name}</span>
                     </div>
-                    <span className="font-bold">₹{entry.value.toLocaleString()}</span>
+                    <span className="font-bold text-gray-900">₹{entry.value.toLocaleString()}</span>
                   </div>
                 ))}
               </div>
@@ -345,14 +279,15 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
           </div>
         )}
 
-        {/* Ledger table */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        {/* Ledger */}
+        <div className="premium-card p-0 overflow-hidden">
           <div className="p-4 border-b border-gray-100 space-y-3">
-            <h3 className="text-base font-bold">{selectedEmployee}'s Ledger</h3>
+            <h3 className="section-title">{selectedEmployee}'s Ledger</h3>
             <div className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <select className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-black appearance-none" value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
+                <select className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]"
+                  value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)}>
                   <option value="All">All Months</option>
                   {Array.from(new Set(employeeData?.rows.map(r => { if (!r.Date) return null; try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return null; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; } catch { return null; } }).filter(Boolean))).sort().reverse().map(m => (
                     <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('default', { month: 'short', year: 'numeric' })}</option>
@@ -360,8 +295,10 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                 </select>
               </div>
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-                <input type="text" placeholder="Search reference…" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full pl-8 pr-4 py-2.5 bg-gray-50 border-none rounded-xl text-sm focus:ring-2 focus:ring-black" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
+                <input type="text" placeholder="Search reference…" value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none min-h-[42px]" />
               </div>
             </div>
           </div>
@@ -376,12 +313,14 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                 { header: 'Cash (₹)', render: (row) => `₹${Number(row['Cash Given (₹)'] || 0).toLocaleString()}` },
                 { header: 'Exp (₹)', render: (row) => `₹${Number(row['Expense (₹)'] || 0).toLocaleString()}` },
                 { header: 'Status', render: (row) => (
-                  <span className={cn('px-2 py-1 rounded-full text-[10px] font-bold uppercase', row.Status === 'Completed' ? 'bg-green-50 text-green-600' : 'bg-orange-50 text-orange-600')}>{row.Status}</span>
+                  <span className={cn('badge', row.Status === 'Completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700')}>
+                    {row.Status}
+                  </span>
                 )},
                 { header: 'Actions', render: (row) => (
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => openEditModal(row)} className="p-2 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors" title="Edit"><Edit2 size={15} /></button>
-                    <button onClick={() => handleDeleteRow(row)} className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors" title="Delete"><Trash2 size={15} /></button>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => openEditModal(row)} className="icon-btn text-blue-500 hover:bg-blue-50 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Edit2 size={14} strokeWidth={2} /></button>
+                    <button onClick={() => handleDeleteRow(row)} className="icon-btn text-red-500 hover:bg-red-50 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Trash2 size={14} strokeWidth={2} /></button>
                   </div>
                 )}
               ]}
@@ -393,46 +332,49 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
     );
   }
 
-  /* ─── Main Employee List ─── */
+  /* ── Main List ── */
   return (
     <>
-      <div className="space-y-4 sm:space-y-6">
+      <div className="space-y-4 sm:space-y-5">
         {/* Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <h3 className="text-base font-bold">Employee Analytics</h3>
-          <div className="flex flex-wrap gap-2">
+        <div className="controls-row">
+          <h2 className="section-title">Employee Analytics</h2>
+          <div className="controls-actions">
             <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-              <select className="pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-black appearance-none min-h-[44px]" value={mainSelectedMonth} onChange={e => setMainSelectedMonth(e.target.value)}>
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
+              <select className="pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]"
+                value={mainSelectedMonth} onChange={e => setMainSelectedMonth(e.target.value)}>
                 <option value="All">All Months</option>
                 {Array.from(new Set(employeesData.map(r => { if (!r.Date) return null; try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return null; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; } catch { return null; } }).filter(Boolean))).sort().reverse().map(m => (
                   <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('default', { month: 'short', year: 'numeric' })}</option>
                 ))}
               </select>
             </div>
-            <div className="relative flex-1 sm:flex-none sm:w-52">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
-              <input type="text" placeholder="Search employee…" value={mainSearchQuery} onChange={e => setMainSearchQuery(e.target.value)} className="w-full pl-8 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-black min-h-[44px]" />
+            <div className="relative flex-1 sm:flex-none sm:w-48">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
+              <input type="text" placeholder="Search employee…" value={mainSearchQuery}
+                onChange={e => setMainSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none min-h-[42px]" />
             </div>
-            <button onClick={() => handleExportPDF(employeeSummary, 'Employee_Summary')} className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl hover:bg-gray-50 text-sm font-medium transition-colors min-h-[44px]">
-              <Download size={15} /> <span className="hidden sm:inline">Export</span>
+            <button onClick={() => handleExportPDF(employeeSummary, 'Employee_Summary')} className="ghost-button text-sm">
+              <Download size={14} /><span className="hidden sm:inline">Export</span>
             </button>
             <button onClick={() => openEditModal()} className="premium-button text-sm">
-              <Plus size={15} /> Add Entry
+              <Plus size={14} strokeWidth={2.5} /> Add Entry
             </button>
           </div>
         </div>
 
         {/* Bar Chart */}
-        <div className="premium-card h-[250px] sm:h-[300px]">
+        <div className="premium-card" style={{ height: 'clamp(220px, 30vw, 300px)' }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={graphData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} interval={0} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11 }} />
-              <RechartsTooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', fontSize: '13px' }} />
-              <Bar dataKey="Cash" fill="#e5e7eb" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="Expense" fill="#000000" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }} interval={0} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 10 }} />
+              <RTooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgb(0 0 0/0.1)', fontSize: 12 }} />
+              <Bar dataKey="Cash" fill="#e5e7eb" radius={[4, 4, 0, 0]} maxBarSize={32} />
+              <Bar dataKey="Expense" fill="#111827" radius={[4, 4, 0, 0]} maxBarSize={32} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -446,12 +388,13 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
             { header: 'Cash (₹)', render: (row) => `₹${row.totalGiven.toLocaleString()}` },
             { header: 'Expense (₹)', render: (row) => `₹${row.totalExpense.toLocaleString()}` },
             { header: 'Balance (₹)', render: (row) => (
-              <span className={row.balance >= 0 ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
+              <span className={cn('font-bold', row.balance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
                 ₹{row.balance.toLocaleString()}
               </span>
             )},
             { header: 'Actions', render: (row) => (
-              <button onClick={() => setSelectedEmployee(row.name)} className="px-3 py-1.5 bg-black text-white rounded-lg text-xs font-semibold hover:bg-gray-800 transition-colors min-h-[36px]">
+              <button onClick={() => setSelectedEmployee(row.name)}
+                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-700 transition-colors min-h-[34px]">
                 View
               </button>
             )}
