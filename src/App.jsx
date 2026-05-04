@@ -22,13 +22,14 @@ function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [data, setData] = useState({ employees: [], clients: [], expenses: [], notes: [], password: '' });
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
 
   useEffect(() => { loadData(); }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async (isBackground = false) => {
+    if (!isBackground) setLoading(true);
     try {
       const result = await fetchData();
       setData(result);
@@ -43,6 +44,7 @@ function App() {
       console.error('Failed to load data', err);
     } finally {
       setLoading(false);
+      setInitialLoaded(true);
     }
   };
 
@@ -82,7 +84,7 @@ function App() {
   };
 
   const renderContent = () => {
-    if (loading) {
+    if (!initialLoaded && loading) {
       return (
         <div className="flex flex-col items-center justify-center py-28 gap-4">
           <div className="spinner" />
@@ -97,19 +99,19 @@ function App() {
         <Route path="/" element={<Dashboard data={data} />} />
 
         <Route path="/employees" element={
-          <EmployeeManager employeesData={data.employees} onDataChanged={loadData} />
+          <EmployeeManager employeesData={data.employees} onDataChanged={() => loadData(true)} />
         } />
 
         <Route path="/clients" element={
-          <ClientManager clientsData={data.clients} onDataChanged={loadData} />
+          <ClientManager clientsData={data.clients} onDataChanged={() => loadData(true)} />
         } />
 
         <Route path="/expenses" element={
-          <ExpenseManager expensesData={data.expenses} onDataChanged={loadData} />
+          <ExpenseManager expensesData={data.expenses} onDataChanged={() => loadData(true)} />
         } />
 
         <Route path="/notes" element={
-          <NotesManager notesData={data.notes} onDataChanged={loadData} />
+          <NotesManager notesData={data.notes} onDataChanged={() => loadData(true)} />
         } />
       </Routes>
     );
