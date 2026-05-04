@@ -207,7 +207,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, o
   /* ── Mobile Bottom Tab Bar ─────────────────────────────────── */
   const MobileBottomNav = (
     <nav className="mobile-bottom-nav">
-      <div className="grid grid-cols-4 h-[62px]">
+      <div className="grid grid-cols-5 h-[68px] max-w-md mx-auto px-1">
         {menuItems.map((item) => {
           const active = isActive(item);
           return (
@@ -215,23 +215,25 @@ const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, o
               key={item.id}
               to={item.path}
               className={cn(
-                'flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition-all',
-                active ? 'text-gray-900' : 'text-gray-400'
+                'relative flex flex-col items-center justify-center gap-1 text-[10px] font-bold transition-all duration-300',
+                active ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'
               )}
             >
               <span
                 className={cn(
-                  'flex items-center justify-center w-8 h-7 rounded-xl transition-all duration-200',
-                  active ? 'bg-gray-900' : ''
+                  'flex items-center justify-center w-9 h-9 transition-all duration-300',
+                  active ? 'bg-gray-900 rounded-full shadow-md -translate-y-1' : 'bg-transparent'
                 )}
               >
                 <item.icon
-                  size={17}
-                  strokeWidth={active ? 2.5 : 1.8}
+                  size={18}
+                  strokeWidth={active ? 2.5 : 2}
                   className={active ? 'text-white' : ''}
                 />
               </span>
-              <span className="leading-none tracking-tight">{item.label}</span>
+              <span className={cn('leading-none tracking-tight transition-transform', active ? '-translate-y-0.5' : '')}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
