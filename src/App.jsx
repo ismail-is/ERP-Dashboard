@@ -7,6 +7,7 @@ import { Dashboard } from './components/Dashboard';
 import { EmployeeManager } from './components/EmployeeManager';
 import { ClientManager } from './components/ClientManager';
 import { ExpenseManager } from './components/ExpenseManager';
+import { NotesManager } from './components/NotesManager';
 import { fetchData } from './services/googleSheets';
 import { Bell, User, Menu, Search, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -14,12 +15,12 @@ import { cn } from './utils/cn';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(() =>
-    localStorage.getItem('isLoggedIn') === 'true'
+    !!localStorage.getItem('erp_password')
   );
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [data, setData] = useState({ employees: [], clients: [], expenses: [], password: '' });
+  const [data, setData] = useState({ employees: [], clients: [], expenses: [], notes: [], password: '' });
   const [loading, setLoading] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
@@ -31,6 +32,13 @@ function App() {
     try {
       const result = await fetchData();
       setData(result);
+      
+      // Strict password validation
+      const savedPass = localStorage.getItem('erp_password');
+      if (savedPass && result.password && savedPass !== result.password.toString()) {
+        setIsAuthenticated(false);
+        localStorage.removeItem('erp_password');
+      }
     } catch (err) {
       console.error('Failed to load data', err);
     } finally {
@@ -43,9 +51,9 @@ function App() {
   if (!isAuthenticated) {
     return (
       <Login
-        onAccess={() => {
+        onAccess={(pwd) => {
           setIsAuthenticated(true);
-          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('erp_password', pwd);
         }}
         correctPassword={data.password || '0000'}
         isDataLoading={loading}
@@ -59,6 +67,7 @@ function App() {
     if (p === '/employees')  return 'Employees';
     if (p === '/clients')    return 'Clients';
     if (p === '/expenses')   return 'Expenses';
+    if (p === '/notes')      return 'Sticky Notes';
     return p.slice(1).charAt(0).toUpperCase() + p.slice(2);
   };
 
@@ -68,6 +77,7 @@ function App() {
     if (p === '/employees')  return 'Manage employee ledgers and track payments.';
     if (p === '/clients')    return 'Track clients, revenue and project status.';
     if (p === '/expenses')   return 'Monitor and categorize business expenses.';
+    if (p === '/notes')      return 'Jot down quick thoughts and important reminders.';
     return '';
   };
 
@@ -96,6 +106,10 @@ function App() {
 
         <Route path="/expenses" element={
           <ExpenseManager expensesData={data.expenses} onDataChanged={loadData} />
+        } />
+
+        <Route path="/notes" element={
+          <NotesManager notesData={data.notes} onDataChanged={loadData} />
         } />
       </Routes>
     );
@@ -127,7 +141,7 @@ function App() {
         setMobileMenuOpen={setMobileMenuOpen}
         onLogout={() => {
           setIsAuthenticated(false);
-          localStorage.removeItem('isLoggedIn');
+          localStorage.removeItem('erp_password');
         }}
       />
 
@@ -205,11 +219,8 @@ function App() {
                 />
               </button>
 
-              {/* Notification */}
-              <button className="icon-btn relative text-gray-500" aria-label="Notifications">
-                <Bell size={18} strokeWidth={2} />
-                <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-red-500 rounded-full" />
-              </button>
+        
+             
 
               {/* Avatar */}
               <div className="flex items-center gap-2 pl-2 border-l border-gray-100 ml-1">

@@ -76,13 +76,43 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   const handleExportPDF = (dataToExport, title) => {
     if (!dataToExport?.length) return toast.error('No data to export');
     const doc = new jsPDF();
-    doc.text(`Report: ${title}`, 14, 15);
-    const headers = Object.keys(dataToExport[0]).filter(k => k !== 'id' && k !== 'Src Row');
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Report: ${title.replace(/_/g, ' ')}`, 14, 15);
+
+    let head = [];
+    let body = [];
+
+    if (title === 'Employee_Summary') {
+      head = [['Employee Name', 'Cash Given (Rs.)', 'Expense (Rs.)', 'Balance (Rs.)']];
+      body = dataToExport.map(row => [
+        row.name || 'Unassigned',
+        row.totalGiven.toLocaleString('en-IN'),
+        row.totalExpense.toLocaleString('en-IN'),
+        row.balance.toLocaleString('en-IN')
+      ]);
+    } else {
+      head = [['Date', 'Reference', 'Vendor', 'Mode', 'Cash Given (Rs.)', 'Expense (Rs.)', 'Status']];
+      body = dataToExport.map(row => [
+        row.Date ? formatLocalYMD(parseDateObj(row.Date)) : '',
+        row['Project / Reference'] || '',
+        row['Client / Vendor'] || '',
+        row['Payment Mode'] || '',
+        Math.floor(Number(row['Cash Given (₹)'] || 0)).toLocaleString('en-IN'),
+        Math.floor(Number(row['Expense (₹)'] || 0)).toLocaleString('en-IN'),
+        row.Status || ''
+      ]);
+    }
+
     autoTable(doc, {
-      head: [headers],
-      body: dataToExport.map(row => headers.map(h => { let v = row[h]; if (h === 'Date' && v) return formatLocalYMD(parseDateObj(v)); return v || ''; })),
-      startY: 20, theme: 'grid', styles: { fontSize: 8 }, headStyles: { fillColor: [17, 24, 39] }
+      head,
+      body,
+      startY: 22,
+      theme: 'grid',
+      styles: { fontSize: 9, font: 'helvetica' },
+      headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
     });
+
     doc.save(`${title.replace(/\s+/g, '_')}.pdf`);
     toast.success('PDF Downloaded!');
   };
@@ -94,9 +124,13 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
     Object.keys(formData).forEach(k => { dataToSave[k + '\n'] = formData[k]; dataToSave[k + ' '] = formData[k]; });
     if (formMode === 'add') {
       dataToSave['Src Row'] = Date.now().toString();
-      if (!dataToSave['Balance After Row (₹)'])
-        dataToSave['Balance After Row (₹)'] = Number(dataToSave['Cash Given (₹)'] || 0) - Number(dataToSave['Expense (₹)'] || 0);
     }
+    // Always auto-compute balance from integers
+    const cashGiven = Math.floor(Number(dataToSave['Cash Given (₹)'] || 0));
+    const expAmt    = Math.floor(Number(dataToSave['Expense (₹)'] || 0));
+    dataToSave['Cash Given (₹)']        = cashGiven;
+    dataToSave['Expense (₹)']           = expAmt;
+    dataToSave['Balance After Row (₹)'] = cashGiven - expAmt;
     const lt = toast.loading('Saving…');
     try {
       const result = await updateSheetData(formMode, 'Employees', dataToSave);
@@ -133,10 +167,23 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
       setFormMode('edit');
       const editData = { ...row };
       if (editData.Date) editData.Date = formatLocalYMD(parseDateObj(editData.Date));
+      // Ensure integer values
+      editData['Cash Given (₹)'] = Math.floor(Number(editData['Cash Given (₹)'] || 0));
+      editData['Expense (₹)']    = Math.floor(Number(editData['Expense (₹)'] || 0));
       setFormData(editData);
     } else {
       setFormMode('add');
-      setFormData({ 'Date': formatLocalYMD(new Date()), 'Employee Name': selectedEmployee || '', 'Project / Reference': '', 'Client / Vendor': '', 'Payment Mode': 'Cash', 'Cash Given (₹)': 0, 'Expense (₹)': 0, 'Balance After Row (₹)': 0, 'Status': 'Pending', 'Notes': '' });
+      setFormData({
+        'Date': formatLocalYMD(new Date()),
+        'Employee Name': selectedEmployee || '',
+        'Project / Reference': '',
+        'Client / Vendor': '',
+        'Payment Mode': 'Cash',
+        'Cash Given (₹)': '',
+        'Expense (₹)': '',
+        'Status': 'Pending',
+        'Notes': ''
+      });
     }
     setIsEditing(true);
   };
@@ -144,25 +191,17 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   /* ── Modal ── */
   const renderModal = () => {
     if (!isEditing) return null;
-    const field = (label, key, type = 'text', opts = {}) => (
-      <div className={opts.span2 ? 'sm:col-span-2' : ''}>
-        <label className="block text-sm font-bold mb-2 text-gray-700">{label}</label>
-        {opts.select ? (
-          <select className="premium-input" value={formData[key] || ''} onChange={e => setFormData({ ...formData, [key]: e.target.value })}>
-            {opts.options.map(o => <option key={o}>{o}</option>)}
-          </select>
-        ) : (
-          <input type={type} step={type === 'number' ? '0.01' : undefined} className="premium-input"
-            value={formData[key] || ''} onChange={e => setFormData({ ...formData, [key]: e.target.value })}
-            {...(opts.list ? { list: opts.list } : {})} />
-        )}
-        {opts.datalist && (
-          <datalist id={opts.list}>
-            {employeeSummary.filter(e => e.name && e.name !== 'Unassigned').map(e => <option key={e.name} value={e.name} />)}
-          </datalist>
-        )}
-      </div>
-    );
+
+    /* integer-only handler */
+    const handleInt = (key) => (e) => {
+      const raw = e.target.value.replace(/[^0-9]/g, '');
+      setFormData(prev => ({ ...prev, [key]: raw }));
+    };
+
+    const cash   = Math.floor(Number(formData['Cash Given (₹)'] || 0));
+    const expAmt = Math.floor(Number(formData['Expense (₹)']    || 0));
+    const bal    = cash - expAmt;
+
     return (
       <div className="modal-overlay" onClick={e => { if (e.target === e.currentTarget) setIsEditing(false); }}>
         <div className="modal-sheet">
@@ -173,16 +212,104 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
           </div>
           <form onSubmit={handleSaveRow} className="p-4 sm:p-6 space-y-4 overflow-y-auto">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {field('Employee Name', 'Employee Name', 'text', { span2: true, list: 'employee-names', datalist: true })}
-              {field('Date', 'Date', 'date')}
-              {field('Payment Mode', 'Payment Mode', 'text', { select: true, options: ['Cash', 'UPI', 'Bank Transfer'] })}
-              {field('Project / Reference', 'Project / Reference')}
-              {field('Client / Vendor', 'Client / Vendor')}
-              {field('Cash Given (₹)', 'Cash Given (₹)', 'number')}
-              {field('Expense (₹)', 'Expense (₹)', 'number')}
-              {field('Balance After Row (₹)', 'Balance After Row (₹)', 'number')}
-              {field('Status', 'Status', 'text', { select: true, options: ['Pending', 'Completed'] })}
-              {field('Notes', 'Notes', 'text', { span2: true })}
+
+              {/* Employee Name */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-bold mb-2 text-gray-700">Employee Name <span className="text-gray-500">*</span></label>
+                <input required type="text" list="employee-names" className="premium-input"
+                  placeholder="Select or type name…"
+                  value={formData['Employee Name'] || ''}
+                  onChange={e => setFormData({ ...formData, 'Employee Name': e.target.value })} />
+                <datalist id="employee-names">
+                  {employeeSummary.filter(e => e.name && e.name !== 'Unassigned').map(e => <option key={e.name} value={e.name} />)}
+                </datalist>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Date <span className="text-gray-500">*</span></label>
+                <input required type="date" className="premium-input"
+                  value={formData['Date'] || ''}
+                  onChange={e => setFormData({ ...formData, 'Date': e.target.value })} />
+              </div>
+
+              {/* Payment Mode */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Payment Mode</label>
+                <select className="premium-input" value={formData['Payment Mode'] || 'Cash'}
+                  onChange={e => setFormData({ ...formData, 'Payment Mode': e.target.value })}>
+                  <option>Cash</option><option>UPI</option><option>Bank Transfer</option>
+                </select>
+              </div>
+
+              {/* Project / Reference */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Project / Reference</label>
+                <input type="text" className="premium-input" placeholder="e.g. Office Setup"
+                  value={formData['Project / Reference'] || ''}
+                  onChange={e => setFormData({ ...formData, 'Project / Reference': e.target.value })} />
+              </div>
+
+              {/* Client / Vendor */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Client / Vendor</label>
+                <input type="text" className="premium-input" placeholder="e.g. Local Store"
+                  value={formData['Client / Vendor'] || ''}
+                  onChange={e => setFormData({ ...formData, 'Client / Vendor': e.target.value })} />
+              </div>
+
+              {/* Cash Given — integers only */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Cash Given (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
+                    className="premium-input pl-8"
+                    value={formData['Cash Given (₹)'] || ''}
+                    onChange={handleInt('Cash Given (₹)')} />
+                </div>
+              </div>
+
+              {/* Expense — integers only */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Expense (₹)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
+                    className="premium-input pl-8"
+                    value={formData['Expense (₹)'] || ''}
+                    onChange={handleInt('Expense (₹)')} />
+                </div>
+              </div>
+
+              {/* Balance — auto-computed, shown read-only */}
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-bold mb-2 text-gray-700">Balance (auto-calculated)</label>
+                <div className={`premium-input flex items-center gap-2 cursor-default select-none ${
+                  bal >= 0 ? 'bg-gray-100 border-gray-200 text-gray-900' : 'bg-gray-50 border-gray-200 text-gray-600'
+                }`}>
+                  <span className="font-black text-base">₹{Math.abs(bal).toLocaleString('en-IN')}</span>
+                  <span className="text-xs font-semibold opacity-70">{bal >= 0 ? 'Surplus' : 'Deficit'}</span>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Status</label>
+                <select className="premium-input" value={formData['Status'] || 'Pending'}
+                  onChange={e => setFormData({ ...formData, 'Status': e.target.value })}>
+                  <option>Pending</option><option>Completed</option>
+                </select>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-bold mb-2 text-gray-700">Notes</label>
+                <input type="text" className="premium-input" placeholder="Optional notes…"
+                  value={formData['Notes'] || ''}
+                  onChange={e => setFormData({ ...formData, 'Notes': e.target.value })} />
+              </div>
+
             </div>
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setIsEditing(false)} className="ghost-button flex-1 justify-center">Cancel</button>
@@ -239,8 +366,8 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: 'Cash Given', value: employeeData?.totalGiven || 0, color: 'text-gray-900' },
-            { label: 'Expense', value: employeeData?.totalExpense || 0, color: 'text-red-600' },
-            { label: 'Balance', value: employeeData?.balance || 0, color: (employeeData?.balance || 0) >= 0 ? 'text-emerald-600' : 'text-red-600', highlight: true },
+            { label: 'Expense', value: employeeData?.totalExpense || 0, color: 'text-gray-600' },
+            { label: 'Balance', value: employeeData?.balance || 0, color: (employeeData?.balance || 0) >= 0 ? 'text-gray-900' : 'text-gray-600', highlight: true },
           ].map(({ label, value, color, highlight }) => (
             <div key={label} className={cn('premium-card text-center py-4', highlight && 'border-2 border-gray-900')}>
               <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
@@ -306,21 +433,26 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
             <DataTable
               data={rows}
               columns={[
-                { header: 'Date', render: (row) => row.Date ? formatLocalYMD(parseDateObj(row.Date)) || row.Date : '' },
-                { header: 'Reference', accessor: 'Project / Reference' },
-                { header: 'Vendor', accessor: 'Client / Vendor' },
-                { header: 'Mode', accessor: 'Payment Mode' },
-                { header: 'Cash (₹)', render: (row) => `₹${Number(row['Cash Given (₹)'] || 0).toLocaleString()}` },
-                { header: 'Exp (₹)', render: (row) => `₹${Number(row['Expense (₹)'] || 0).toLocaleString()}` },
+                { header: 'Date', render: (row) => {
+                  if (!row.Date) return '—';
+                  const d = parseDateObj(row.Date);
+                  if (!d || isNaN(d.getTime())) return String(row.Date).split('T')[0];
+                  return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+                }},
+                { header: 'Reference', render: (row) => row['Project / Reference'] || '—' },
+                { header: 'Vendor',    render: (row) => row['Client / Vendor']     || '—' },
+                { header: 'Mode',      accessor: 'Payment Mode' },
+                { header: 'Cash (₹)', render: (row) => `₹${Math.floor(Number(row['Cash Given (₹)'] || 0)).toLocaleString('en-IN')}` },
+                { header: 'Exp (₹)',  render: (row) => `₹${Math.floor(Number(row['Expense (₹)']    || 0)).toLocaleString('en-IN')}` },
                 { header: 'Status', render: (row) => (
-                  <span className={cn('badge', row.Status === 'Completed' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700')}>
-                    {row.Status}
+                  <span className={cn('badge', row.Status === 'Completed' ? 'bg-gray-100 text-gray-900' : 'bg-gray-50 text-gray-600')}>
+                    {row.Status || 'Pending'}
                   </span>
                 )},
                 { header: 'Actions', render: (row) => (
                   <div className="flex items-center gap-1">
-                    <button onClick={() => openEditModal(row)} className="icon-btn text-blue-500 hover:bg-blue-50 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Edit2 size={14} strokeWidth={2} /></button>
-                    <button onClick={() => handleDeleteRow(row)} className="icon-btn text-red-500 hover:bg-red-50 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Trash2 size={14} strokeWidth={2} /></button>
+                    <button onClick={() => openEditModal(row)} className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Edit2 size={14} strokeWidth={2} /></button>
+                    <button onClick={() => handleDeleteRow(row)} className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg"><Trash2 size={14} strokeWidth={2} /></button>
                   </div>
                 )}
               ]}
@@ -333,73 +465,162 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
   }
 
   /* ── Main List ── */
+  const totalStaff = new Set(employeesData.map(e => (e['Employee Name']||'').trim().toLowerCase()).filter(Boolean)).size;
+  const totalCash  = employeesData.reduce((s,r) => s + Math.floor(Number(r['Cash Given (₹)']||0)), 0);
+  const totalExp   = employeesData.reduce((s,r) => s + Math.floor(Number(r['Expense (₹)']||0)), 0);
+  const totalBal   = totalCash - totalExp;
+
   return (
     <>
       <div className="space-y-4 sm:space-y-5">
-        {/* Controls */}
+
+        {/* Header Controls */}
         <div className="controls-row">
-          <h2 className="section-title">Employee Analytics</h2>
+          <div>
+            <h2 className="section-title">Employees</h2>
+            <p className="text-xs text-gray-400 mt-0.5">{totalStaff} staff · {employeesData.length} ledger entries</p>
+          </div>
           <div className="controls-actions">
             <div className="relative">
               <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
-              <select className="pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]"
+              <select className="pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]"
                 value={mainSelectedMonth} onChange={e => setMainSelectedMonth(e.target.value)}>
                 <option value="All">All Months</option>
-                {Array.from(new Set(employeesData.map(r => { if (!r.Date) return null; try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return null; return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; } catch { return null; } }).filter(Boolean))).sort().reverse().map(m => (
-                  <option key={m} value={m}>{new Date(m + '-01').toLocaleDateString('default', { month: 'short', year: 'numeric' })}</option>
+                {Array.from(new Set(employeesData.map(r => {
+                  if (!r.Date) return null;
+                  try { const d = parseDateObj(r.Date); if (isNaN(d.getTime())) return null;
+                    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+                  } catch { return null; }
+                }).filter(Boolean))).sort().reverse().map(m => (
+                  <option key={m} value={m}>{new Date(m+'-01').toLocaleDateString('default',{month:'short',year:'numeric'})}</option>
                 ))}
               </select>
             </div>
-            <div className="relative flex-1 sm:flex-none sm:w-48">
+            <div className="relative flex-1 sm:flex-none sm:w-44">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={13} />
               <input type="text" placeholder="Search employee…" value={mainSearchQuery}
                 onChange={e => setMainSearchQuery(e.target.value)}
                 className="w-full pl-9 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none min-h-[42px]" />
             </div>
             <button onClick={() => handleExportPDF(employeeSummary, 'Employee_Summary')} className="ghost-button text-sm">
-              <Download size={14} /><span className="hidden sm:inline">Export</span>
+              <Download size={14}/><span className="hidden sm:inline">Export</span>
             </button>
             <button onClick={() => openEditModal()} className="premium-button text-sm">
-              <Plus size={14} strokeWidth={2.5} /> Add Entry
+              <Plus size={14} strokeWidth={2.5}/> Add Entry
             </button>
           </div>
         </div>
 
-        {/* Bar Chart */}
-        <div className="premium-card" style={{ height: 'clamp(220px, 30vw, 300px)' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={graphData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }} interval={0} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 10 }} />
-              <RTooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgb(0 0 0/0.1)', fontSize: 12 }} />
-              <Bar dataKey="Cash" fill="#e5e7eb" radius={[4, 4, 0, 0]} maxBarSize={32} />
-              <Bar dataKey="Expense" fill="#111827" radius={[4, 4, 0, 0]} maxBarSize={32} />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* KPI Strip */}
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: 'Total Staff',   value: totalStaff,              color: 'text-gray-900'    },
+            { label: 'Cash Given',    value: `₹${totalCash.toLocaleString('en-IN')}`, color: 'text-gray-700' },
+            { label: 'Net Balance',   value: `₹${Math.abs(totalBal).toLocaleString('en-IN')}`, color: totalBal >= 0 ? 'text-gray-900' : 'text-gray-600' },
+          ].map(({label, value, color}) => (
+            <div key={label} className="premium-card text-center py-4">
+              <p className="text-[9px] sm:text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</p>
+              <p className={cn('text-base sm:text-lg font-black truncate', color)}>{value}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Summary Table */}
-        <DataTable
-          title="All Employees Summary"
-          data={employeeSummary}
-          columns={[
-            { header: 'Employee', accessor: 'name' },
-            { header: 'Cash (₹)', render: (row) => `₹${row.totalGiven.toLocaleString()}` },
-            { header: 'Expense (₹)', render: (row) => `₹${row.totalExpense.toLocaleString()}` },
-            { header: 'Balance (₹)', render: (row) => (
-              <span className={cn('font-bold', row.balance >= 0 ? 'text-emerald-600' : 'text-red-600')}>
-                ₹{row.balance.toLocaleString()}
-              </span>
-            )},
-            { header: 'Actions', render: (row) => (
-              <button onClick={() => setSelectedEmployee(row.name)}
-                className="px-3 py-1.5 bg-gray-900 text-white rounded-lg text-xs font-bold hover:bg-gray-700 transition-colors min-h-[34px]">
-                View
+        {/* Bar Chart — only if data exists */}
+        {graphData.length > 0 && (
+          <div className="premium-card" style={{ height: 'clamp(200px, 28vw, 280px)' }}>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Cash Given vs Expense per Employee</p>
+            <ResponsiveContainer width="100%" height="88%">
+              <BarChart data={graphData} margin={{ top: 4, right: 5, left: -25, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }} interval={0} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 10 }} />
+                <RTooltip cursor={{ fill: '#f9fafb' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 20px rgb(0 0 0/0.1)', fontSize: 12 }}
+                  formatter={(v, n) => [`₹${Math.floor(v).toLocaleString('en-IN')}`, n]} />
+                <Bar dataKey="Cash" name="Cash Given" fill="#e5e7eb" radius={[4,4,0,0]} maxBarSize={32} />
+                <Bar dataKey="Expense" name="Expense" fill="#111827" radius={[4,4,0,0]} maxBarSize={32} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {/* Employee Cards */}
+        {employeeSummary.length === 0 ? (
+          <div className="premium-card py-16 text-center">
+           
+            <h3 className="text-base font-black text-gray-900 mb-1">No Employees Found</h3>
+            <p className="text-sm text-gray-400 mb-5">
+              {mainSearchQuery || mainSelectedMonth !== 'All'
+                ? 'No results match your filter. Try clearing the search.'
+                : 'Start by adding your first employee ledger entry.'}
+            </p>
+            {(!mainSearchQuery && mainSelectedMonth === 'All') && (
+              <button onClick={() => openEditModal()} className="premium-button mx-auto">
+                <Plus size={15} strokeWidth={2.5}/> Add First Entry
               </button>
             )}
-          ]}
-        />
+            {(mainSearchQuery || mainSelectedMonth !== 'All') && (
+              <button onClick={() => { setMainSearchQuery(''); setMainSelectedMonth('All'); }}
+                className="ghost-button mx-auto">Clear Filters</button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {employeeSummary.map((emp, i) => {
+              const bal = emp.balance;
+              const initials = emp.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+              const pct = emp.totalGiven > 0 ? Math.min(100, Math.round((emp.totalExpense / emp.totalGiven) * 100)) : 0;
+              return (
+                <div key={i}
+                  onClick={() => setSelectedEmployee(emp.name)}
+                  className="premium-card cursor-pointer hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98] transition-all duration-200 group">
+
+                  {/* Avatar + Name */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-11 h-11 bg-gray-900 rounded-2xl flex items-center justify-center text-white text-sm font-black flex-shrink-0">
+                      {initials}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-black text-[15px] text-gray-900 truncate">{emp.name}</p>
+                      <p className="text-xs text-gray-400">{emp.rows.length} ledger {emp.rows.length === 1 ? 'entry' : 'entries'}</p>
+                    </div>
+                    <ArrowLeft size={14} className="text-gray-300 group-hover:text-gray-900 rotate-180 transition-colors flex-shrink-0" />
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="bg-gray-50 rounded-xl px-3 py-2">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Cash Given</p>
+                      <p className="text-sm font-black text-gray-900 mt-0.5">₹{Math.floor(emp.totalGiven).toLocaleString('en-IN')}</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl px-3 py-2">
+                      <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">Expense</p>
+                      <p className="text-sm font-black text-gray-600 mt-0.5">₹{Math.floor(emp.totalExpense).toLocaleString('en-IN')}</p>
+                    </div>
+                  </div>
+
+                  {/* Spend bar */}
+                  <div className="mb-3">
+                    <div className="flex justify-between text-[10px] text-gray-400 font-semibold mb-1">
+                      <span>Utilisation</span><span>{pct}%</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all duration-500"
+                        style={{ width: `${pct}%`, backgroundColor: pct > 90 ? '#111827' : pct > 70 ? '#374151' : '#9ca3af' }} />
+                    </div>
+                  </div>
+
+                  {/* Balance */}
+                  <div className={cn('flex items-center justify-between px-3 py-2 rounded-xl text-sm font-bold',
+                    bal >= 0 ? 'bg-gray-100 text-gray-900' : 'bg-gray-50 text-gray-600')}>
+                    <span>{bal >= 0 ? 'Surplus' : 'Deficit'}</span>
+                    <span>₹{Math.abs(Math.floor(bal)).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </div>
       {renderModal()}
     </>

@@ -88,7 +88,7 @@ export const Dashboard = ({ data }) => {
   /* ── Recent clients (last 5) ─────────────────── */
   const recentClients = useMemo(() => clients.slice(-5).reverse(), [clients]);
 
-  const STATUS_COLOR = { Active: 'text-emerald-600 bg-emerald-50', Pending: 'text-amber-600 bg-amber-50', Closed: 'text-gray-500 bg-gray-100', Overdue: 'text-red-600 bg-red-50', 'No activity': 'text-blue-600 bg-blue-50' };
+  const STATUS_COLOR = { Active: 'text-gray-900 bg-gray-100', Pending: 'text-gray-600 bg-gray-100', Closed: 'text-gray-400 bg-gray-50', Overdue: 'text-gray-800 bg-gray-200', 'No activity': 'text-gray-500 bg-gray-50' };
 
   return (
     <div className="space-y-5">
@@ -221,7 +221,7 @@ export const Dashboard = ({ data }) => {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className={cn('text-[13px] font-black', bal >= 0 ? 'text-emerald-600' : 'text-red-600')}>{fmt(Math.abs(bal))}</p>
+                      <p className={cn('text-[13px] font-black', bal >= 0 ? 'text-gray-900' : 'text-gray-600')}>{fmt(Math.abs(bal))}</p>
                       <p className="text-[10px] text-gray-400">{bal >= 0 ? 'surplus' : 'deficit'}</p>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export const Dashboard = ({ data }) => {
               <h3 className="text-sm font-bold text-gray-900">Recent Clients</h3>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-emerald-600">{activeClients} active</span>
+              <span className="text-xs font-bold text-gray-600">{activeClients} active</span>
               <Link to="/clients" className="flex items-center gap-1 text-xs font-bold text-gray-900 hover:underline">
                 View all <ArrowRight size={12} />
               </Link>
@@ -270,7 +270,7 @@ export const Dashboard = ({ data }) => {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-3">
                       <span className={cn('badge text-[10px]', sc)}>{client.status || '—'}</span>
-                      <span className="text-[13px] font-black text-emerald-700">{fmt(client.amount)}</span>
+                      <span className="text-[13px] font-black text-gray-900">{fmt(client.amount)}</span>
                     </div>
                   </div>
                 );
@@ -301,7 +301,7 @@ export const Dashboard = ({ data }) => {
                     <p className="text-[13px] font-bold text-gray-900">{exp.category || '—'}</p>
                     <p className="text-[11px] text-gray-400">{exp.date || '—'}</p>
                   </div>
-                  <p className="text-[14px] font-black text-red-600">{fmt(exp.amount)}</p>
+                  <p className="text-[14px] font-black text-gray-900">{fmt(exp.amount)}</p>
                 </div>
               ))}
             </div>
@@ -319,7 +319,7 @@ export const Dashboard = ({ data }) => {
                           {exp.category || '—'}
                         </span>
                       </td>
-                      <td className="font-black text-red-600">{fmt(exp.amount)}</td>
+                      <td className="font-black text-gray-900">{fmt(exp.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -338,16 +338,16 @@ const KpiCard = ({ icon: Icon, label, value, sub, trend, trendUp, colored }) => 
   <div className="premium-card animate-fade-slide-up">
     <div className="flex items-start justify-between mb-3">
       <div className="p-2 bg-gray-50 rounded-xl">
-        <Icon size={18} className={cn(colored === false ? 'text-red-500' : colored ? 'text-emerald-600' : 'text-gray-700')} strokeWidth={2} />
+        <Icon size={18} className="text-gray-900" strokeWidth={2} />
       </div>
       {trend && (
-        <span className={cn('text-[10px] font-bold px-2 py-1 rounded-full', trendUp ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600')}>
+        <span className={cn('text-[10px] font-bold px-2 py-1 rounded-full', trendUp ? 'bg-gray-100 text-gray-900' : 'bg-gray-50 text-gray-600')}>
           {trend}
         </span>
       )}
     </div>
     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider truncate mb-1">{label}</p>
-    <p className={cn('text-xl font-black tracking-tight truncate', colored === false ? 'text-red-600' : colored ? 'text-emerald-600' : 'text-gray-900')}>{value}</p>
+    <p className="text-xl font-black tracking-tight truncate text-gray-900">{value}</p>
     {sub && <p className="text-[11px] text-gray-400 mt-0.5 truncate">{sub}</p>}
   </div>
 );

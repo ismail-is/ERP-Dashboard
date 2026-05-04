@@ -7,7 +7,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  StickyNote
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Link, useLocation } from 'react-router-dom';
@@ -17,6 +18,7 @@ const menuItems = [
   { id: 'employees', path: '/employees', label: 'Employees', icon: Users },
   { id: 'clients',   path: '/clients',   label: 'Clients',   icon: Briefcase },
   { id: 'expenses',  path: '/expenses',  label: 'Expenses',  icon: Receipt },
+  { id: 'notes',     path: '/notes',     label: 'Notes',     icon: StickyNote },
 ];
 
 const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, onLogout }) => {
@@ -112,7 +114,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, o
         <button
           onClick={onLogout}
           className={cn(
-            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-all text-[14px] font-semibold',
+            'flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-gray-500 hover:bg-gray-100 transition-all text-[14px] font-semibold',
             collapsed && 'justify-center'
           )}
         >
@@ -192,7 +194,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, o
           </div>
           <button
             onClick={onLogout}
-            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-all text-[14px] font-semibold"
+            className="flex items-center gap-3 w-full px-3 py-3 rounded-xl text-gray-500 hover:bg-gray-100 transition-all text-[14px] font-semibold"
           >
             <LogOut size={18} strokeWidth={2} />
             <span>Logout</span>

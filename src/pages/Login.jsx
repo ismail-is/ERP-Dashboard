@@ -10,7 +10,7 @@ const Login = ({ onAccess, correctPassword, isDataLoading }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (password === correctPassword.toString()) {
-      onAccess();
+      onAccess(password);
     } else {
       setError('Invalid code. Access denied.');
       setPassword('');
@@ -107,7 +107,7 @@ const Login = ({ onAccess, correctPassword, isDataLoading }) => {
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0 }}
-                    className="text-red-500 text-sm text-center font-semibold"
+                    className="text-gray-500 text-sm text-center font-semibold"
                   >
                     {error}
                   </motion.p>
@@ -131,7 +131,7 @@ const Login = ({ onAccess, correctPassword, isDataLoading }) => {
           </form>
 
           <p className="mt-8 text-center text-[11px] text-gray-400 font-semibold uppercase tracking-widest">
-            Secure Environment © 2025
+            Secure Environment © 2026
           </p>
         </div>
       </motion.div>

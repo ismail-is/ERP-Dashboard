@@ -41,6 +41,12 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
     return Array.from(s).sort().reverse();
   }, [expensesData]);
 
+  // Only months that actually have expense data
+  const availableMonths = useMemo(() => {
+    const s = new Set(expensesData.map(r => parseDate(r.date).month).filter(Boolean));
+    return MONTHS.filter(m => s.has(m));
+  }, [expensesData]);
+
   const enriched = useMemo(() =>
     expensesData.map(r => ({ ...r, _parsed: parseDate(r.date) })),
   [expensesData]);
@@ -85,13 +91,24 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
   const handleExportPDF = () => {
     if (!filtered.length) return toast.error('No data to export');
     const doc = new jsPDF();
+    // Use ASCII-safe header — jsPDF default font doesn't support \u20B9
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
     doc.text('Expense Report', 14, 15);
     autoTable(doc, {
-      head: [['Date', 'Category', 'Amount (₹)']],
-      body: filtered.map(r => [r._parsed.iso || r.date || '', r.category || '', parseAmt(r.amount).toLocaleString('en-IN')]),
-      startY: 20, theme: 'grid', styles: { fontSize: 9 }, headStyles: { fillColor: [17, 24, 39] },
+      head: [['Date', 'Category', 'Amount (Rs.)']],
+      body: filtered.map(r => [
+        r._parsed.iso || r.date || '',
+        r.category || '',
+        parseAmt(r.amount).toLocaleString('en-IN')
+      ]),
+      startY: 22,
+      theme: 'grid',
+      styles: { fontSize: 9, font: 'helvetica' },
+      headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
       foot: [['', 'TOTAL', parseAmt(kpi.total).toLocaleString('en-IN')]],
       footStyles: { fillColor: [30, 30, 30], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 2: { halign: 'right' } },
     });
     doc.save(`Expenses_${selMonth}_${selYear}.pdf`);
     toast.success('PDF Downloaded!');
@@ -152,10 +169,10 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
             <select value={selMonth} onChange={e => setSelMonth(e.target.value)}
               className="pl-9 pr-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]">
               <option value="All">All Months</option>
-              {MONTHS.map(m => <option key={m}>{m}</option>)}
+              {availableMonths.map(m => <option key={m}>{m}</option>)}
             </select>
           </div>
-          {availableYears.length > 0 && (
+          {availableYears.length > 1 && (
             <select value={selYear} onChange={e => setSelYear(e.target.value)}
               className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-gray-900 outline-none appearance-none min-h-[42px]">
               <option value="All">All Years</option>
@@ -179,10 +196,10 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
 
       {/* KPIs */}
       <div className="kpi-grid stagger-children">
-        <KpiCard icon={IndianRupee}  label="Total Expenses"  value={fmt(kpi.total)}                   color="text-red-500"    bg="bg-red-50"    />
-        <KpiCard icon={TrendingDown} label="Transactions"    value={kpi.count}                        color="text-blue-600"   bg="bg-blue-50"   />
-        <KpiCard icon={Tag}          label="Top Category"    value={kpi.topCat?.[0] || '—'}           color="text-amber-600"  bg="bg-amber-50"  />
-        <KpiCard icon={AlertCircle}  label="Highest Single"  value={fmt(kpi.highest?.amount || 0)}   color="text-purple-600" bg="bg-purple-50" />
+        <KpiCard icon={IndianRupee}  label="Total Expenses"  value={fmt(kpi.total)}                   color="text-gray-900"    bg="bg-gray-100"    />
+        <KpiCard icon={TrendingDown} label="Transactions"    value={kpi.count}                        color="text-gray-600"   bg="bg-gray-100"   />
+        <KpiCard icon={Tag}          label="Top Category"    value={kpi.topCat?.[0] || '—'}           color="text-gray-500"  bg="bg-gray-100"  />
+        <KpiCard icon={AlertCircle}  label="Highest Single"  value={fmt(kpi.highest?.amount || 0)}   color="text-gray-800" bg="bg-gray-200" />
       </div>
 
       {/* Charts */}
@@ -259,13 +276,13 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
                     <p className="font-bold text-[14px] text-gray-900 truncate">{row.category || '—'}</p>
                     <p className="text-xs text-gray-400 mt-0.5">{row._parsed?.iso || row.date || '—'}</p>
                   </div>
-                  <p className="font-black text-[16px] text-red-600 flex-shrink-0">{fmt(row.amount)}</p>
+                  <p className="font-black text-[16px] text-gray-900 flex-shrink-0">{fmt(row.amount)}</p>
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
-                  <button onClick={() => openModal(row)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors min-h-[36px]">
+                  <button onClick={() => openModal(row)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-gray-600 hover:bg-gray-100 transition-colors min-h-[36px]">
                     <Edit2 size={12} strokeWidth={2.5} /> Edit
                   </button>
-                  <button onClick={() => setDeleteTarget(row)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-red-500 hover:bg-red-50 transition-colors min-h-[36px]">
+                  <button onClick={() => setDeleteTarget(row)} className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-gray-600 hover:bg-gray-100 transition-colors min-h-[36px]">
                     <Trash2 size={12} strokeWidth={2.5} /> Delete
                   </button>
                 </div>
@@ -292,11 +309,11 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
                           {row.category || '—'}
                         </span>
                       </td>
-                      <td className="font-bold text-red-600">{fmt(row.amount)}</td>
+                      <td className="font-bold text-gray-900">{fmt(row.amount)}</td>
                       <td>
                         <div className="flex items-center gap-1">
-                          <button onClick={() => openModal(row)} className="icon-btn text-blue-500 hover:bg-blue-50 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Edit"><Edit2 size={14} strokeWidth={2} /></button>
-                          <button onClick={() => setDeleteTarget(row)} className="icon-btn text-red-500 hover:bg-red-50 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Delete"><Trash2 size={14} strokeWidth={2} /></button>
+                          <button onClick={() => openModal(row)} className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Edit"><Edit2 size={14} strokeWidth={2} /></button>
+                          <button onClick={() => setDeleteTarget(row)} className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Delete"><Trash2 size={14} strokeWidth={2} /></button>
                         </div>
                       </td>
                     </tr>
@@ -324,12 +341,12 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
             <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-gray-700">Date <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold mb-2 text-gray-700">Date <span className="text-gray-500">*</span></label>
                   <input required type="date" className="premium-input" value={formData.date}
                     onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
                 </div>
                 <div>
-                  <label className="block text-sm font-bold mb-2 text-gray-700">Category <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-bold mb-2 text-gray-700">Category <span className="text-gray-500">*</span></label>
                   <input required type="text" placeholder="e.g. Internet, Office Rent…" className="premium-input"
                     value={formData.category} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))} />
                 </div>
@@ -359,8 +376,8 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-slide-up">
             <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
-                <Trash2 size={26} className="text-red-500" strokeWidth={2} />
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <Trash2 size={26} className="text-gray-900" strokeWidth={2} />
               </div>
             </div>
             <h3 className="text-[17px] font-black text-center text-gray-900 mb-1">Delete Expense?</h3>
@@ -371,7 +388,7 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
             <div className="flex gap-3">
               <button onClick={() => setDeleteTarget(null)} disabled={isDeleting} className="ghost-button flex-1 justify-center">Cancel</button>
               <button onClick={confirmDelete} disabled={isDeleting}
-                className="flex-1 py-2.5 text-sm font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors min-h-[42px] disabled:opacity-60">
+                className="flex-1 py-2.5 text-sm font-bold bg-gray-900 hover:bg-black text-white rounded-xl transition-colors min-h-[42px] disabled:opacity-60">
                 {isDeleting ? 'Deleting…' : 'Yes, Delete'}
               </button>
             </div>

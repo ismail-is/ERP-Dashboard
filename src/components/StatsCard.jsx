@@ -17,7 +17,7 @@ export const StatsCard = ({ label, value, icon: Icon, trend }) => {
         {trend && (
           <span
             className={`text-[10px] sm:text-[11px] font-bold px-2 py-1 rounded-full ${
-              isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+              isPositive ? 'bg-gray-100 text-gray-900' : 'bg-gray-100 text-gray-600'
             }`}
           >
             {trend}

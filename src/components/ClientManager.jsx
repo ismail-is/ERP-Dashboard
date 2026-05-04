@@ -15,11 +15,11 @@ import autoTable from 'jspdf-autotable';
 import { updateSheetData } from '../services/googleSheets';
 
 const STATUS_CONFIG = {
-  Active:        { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', icon: CheckCircle },
-  Pending:       { bg: 'bg-amber-50',   text: 'text-amber-700',   dot: 'bg-amber-400',   icon: Clock       },
-  Closed:        { bg: 'bg-gray-100',   text: 'text-gray-500',    dot: 'bg-gray-400',    icon: CheckCircle },
-  Overdue:       { bg: 'bg-red-50',     text: 'text-red-600',     dot: 'bg-red-500',     icon: AlertCircle },
-  'No activity': { bg: 'bg-blue-50',    text: 'text-blue-600',    dot: 'bg-blue-400',    icon: AlertCircle },
+  Active:        { bg: 'bg-gray-100', text: 'text-gray-900', dot: 'bg-gray-800', icon: CheckCircle },
+  Pending:       { bg: 'bg-gray-50',  text: 'text-gray-600', dot: 'bg-gray-400', icon: Clock       },
+  Closed:        { bg: 'bg-gray-100', text: 'text-gray-500', dot: 'bg-gray-400', icon: CheckCircle },
+  Overdue:       { bg: 'bg-gray-200', text: 'text-gray-800', dot: 'bg-gray-600', icon: AlertCircle },
+  'No activity': { bg: 'bg-gray-50',  text: 'text-gray-500', dot: 'bg-gray-400', icon: AlertCircle },
 };
 
 const getStatusCfg = (s) =>
@@ -85,13 +85,16 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
   const handleExportPDF = () => {
     if (!filtered.length) return toast.error('No data to export');
     const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
     doc.text('Client Report', 14, 15);
     autoTable(doc, {
-      head: [['Client', 'Services', 'Revenue (₹)', 'Status']],
+      head: [['Client', 'Services', 'Revenue (Rs.)', 'Status']],
       body: filtered.map(r => [r.name || '', r.services || '', parseAmt(r.amount).toLocaleString('en-IN'), r.status || '']),
-      startY: 20, theme: 'grid',
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [17, 24, 39] },
+      startY: 22, theme: 'grid',
+      styles: { fontSize: 9, font: 'helvetica' },
+      headStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: 'bold' },
+      columnStyles: { 2: { halign: 'right' } },
     });
     doc.save('Client_Report.pdf');
     toast.success('PDF Downloaded!');
@@ -183,10 +186,10 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
 
       {/* ── KPI Cards ──────────────────────────────────────── */}
       <div className="kpi-grid stagger-children">
-        <KpiCard icon={IndianRupee} label="Total Revenue"   value={fmt(kpi.totalRevenue)} color="text-emerald-600" bg="bg-emerald-50" />
-        <KpiCard icon={Users}       label="Total Clients"   value={kpi.total}             color="text-blue-600"    bg="bg-blue-50"    />
-        <KpiCard icon={CheckCircle} label="Active"          value={kpi.active}            color="text-emerald-600" bg="bg-emerald-50" />
-        <KpiCard icon={Clock}       label="Pending/Overdue" value={kpi.pending}           color="text-red-500"     bg="bg-red-50"     />
+        <KpiCard icon={IndianRupee} label="Total Revenue"   value={fmt(kpi.totalRevenue)} color="text-gray-900" bg="bg-gray-100" />
+        <KpiCard icon={Users}       label="Total Clients"   value={kpi.total}             color="text-gray-700" bg="bg-gray-100"    />
+        <KpiCard icon={CheckCircle} label="Active"          value={kpi.active}            color="text-gray-900" bg="bg-gray-100" />
+        <KpiCard icon={Clock}       label="Pending/Overdue" value={kpi.pending}           color="text-gray-800" bg="bg-gray-200"     />
       </div>
 
       {/* ── Charts ─────────────────────────────────────────── */}
@@ -264,15 +267,15 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                   </div>
                   <div className="bg-gray-50 rounded-xl px-3.5 py-2.5 flex items-center justify-between">
                     <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Revenue</p>
-                    <p className="font-black text-[15px] text-emerald-700">{fmt(row.amount)}</p>
+                    <p className="font-black text-[15px] text-gray-900">{fmt(row.amount)}</p>
                   </div>
                   <div className="flex items-center justify-end gap-2 pt-1 border-t border-gray-100">
                     <button onClick={() => openModal(row)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-blue-600 hover:bg-blue-50 transition-colors min-h-[36px]">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-gray-600 hover:bg-gray-100 transition-colors min-h-[36px]">
                       <Edit2 size={12} strokeWidth={2.5} /> Edit
                     </button>
                     <button onClick={() => setDeleteTarget(row)}
-                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-red-500 hover:bg-red-50 transition-colors min-h-[36px]">
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[12px] font-bold text-gray-600 hover:bg-gray-100 transition-colors min-h-[36px]">
                       <Trash2 size={12} strokeWidth={2.5} /> Delete
                     </button>
                   </div>
@@ -300,7 +303,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                       <tr key={i}>
                         <td className="font-bold text-gray-900">{row.name || '—'}</td>
                         <td className="text-gray-500">{row.services || '—'}</td>
-                        <td className="font-bold text-emerald-700">{fmt(row.amount)}</td>
+                        <td className="font-bold text-gray-900">{fmt(row.amount)}</td>
                         <td>
                           <span className={cn('badge', sc.bg, sc.text)}>
                             <Icon size={10} strokeWidth={2.5} />{row.status || '—'}
@@ -309,11 +312,11 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                         <td>
                           <div className="flex items-center gap-1">
                             <button onClick={() => openModal(row)}
-                              className="icon-btn text-blue-500 hover:bg-blue-50 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Edit">
+                              className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Edit">
                               <Edit2 size={14} strokeWidth={2} />
                             </button>
                             <button onClick={() => setDeleteTarget(row)}
-                              className="icon-btn text-red-500 hover:bg-red-50 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Delete">
+                              className="icon-btn text-gray-600 hover:bg-gray-100 w-8 h-8 min-w-0 min-h-0 rounded-lg" title="Delete">
                               <Trash2 size={14} strokeWidth={2} />
                             </button>
                           </div>
@@ -406,8 +409,8 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-slide-up">
             <div className="flex justify-center mb-4">
-              <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center">
-                <Trash2 size={26} className="text-red-500" strokeWidth={2} />
+              <div className="w-14 h-14 rounded-full bg-gray-100 flex items-center justify-center">
+                <Trash2 size={26} className="text-gray-900" strokeWidth={2} />
               </div>
             </div>
             <h3 className="text-[17px] font-black text-center text-gray-900 mb-1">Delete Client?</h3>
@@ -420,7 +423,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
               <button onClick={() => setDeleteTarget(null)} disabled={isDeleting}
                 className="ghost-button flex-1 justify-center">Cancel</button>
               <button onClick={confirmDelete} disabled={isDeleting}
-                className="flex-1 py-2.5 text-sm font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors min-h-[42px] disabled:opacity-60">
+                className="flex-1 py-2.5 text-sm font-bold bg-gray-900 hover:bg-black text-white rounded-xl transition-colors min-h-[42px] disabled:opacity-60">
                 {isDeleting ? 'Deleting…' : 'Yes, Delete'}
               </button>
             </div>

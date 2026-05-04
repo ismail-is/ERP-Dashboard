@@ -39,6 +39,9 @@ const MOCK_DATA = {
     { id: 1, category: 'Office Rent', amount: 2000, date: '2024-03-05' },
     { id: 2, category: 'Internet', amount: 150, date: '2024-03-07' },
   ],
+  notes: [
+    { id: 1, title: 'Welcome to Notes', content: 'This is a sample sticky note. You can add, edit, or delete notes here.', color: 'bg-yellow-100', date: new Date().toISOString() }
+  ],
   password: '2036'
 };
 
@@ -61,6 +64,7 @@ export const fetchData = async () => {
       employees: cleanData(data.employees || []),
       clients: cleanData(data.clients || []),
       expenses: cleanData(data.expenses || []),
+      notes: cleanData(data.notes || []),
       password: data.password ? data.password.toString() : MOCK_DATA.password
     };
   } catch (error) {
