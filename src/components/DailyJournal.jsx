@@ -65,12 +65,14 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
   const enriched = useMemo(() => {
     let bal = 0;
     return ledgerData.map((r, i) => {
-      const credit = Number(r.credit || r['Credit (₹)'] || 0);
-      const debit  = Number(r.debit  || r['Debit (₹)']  || 0);
+      // Support both raw GSheet column names and camelCase aliases
+      const credit = Number(r['Credit (\u20b9)'] || r.credit || 0);
+      const debit  = Number(r['Debit (\u20b9)']  || r.debit  || 0);
       const net    = credit - debit;
       bal += net;
-      const di = parseDateInfo(r.date || r['Date'] || '');
-      return { ...r, _credit: credit, _debit: debit, _net: net, _bal: bal, _di: di, _idx: i+1 };
+      const dateVal = r['Date'] || r.date || '';
+      const di = parseDateInfo(dateVal);
+      return { ...r, _credit: credit, _debit: debit, _net: net, _bal: bal, _di: di, _idx: i + 1 };
     });
   }, [ledgerData]);
 
@@ -98,23 +100,23 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
   const openAdd  = () => { setForm(blank()); setMode('add');  setModal(true); };
   const openEdit = (r) => {
     setForm({
-      id: r.id, 'Src Row': r['Src Row'] || r.id,
-      date: r.date || r['Date'] || today(),
-      type: r.type || r['Type'] || 'Income',
-      category: r.category || r['Category'] || '',
-      subcategory: r.subcategory || r['Subcategory'] || '',
-      clientVendor: r.clientVendor || r['Client / Vendor'] || '',
-      projectReference: r.projectReference || r['Project / Reference'] || '',
-      paymentMode: r.paymentMode || r['Payment Mode'] || 'Cash',
-      invoiceNo: r.invoiceNo || r['Invoice No'] || '',
-      debit: String(r._debit || ''),
-      credit: String(r._credit || ''),
-      status: r.status || r['Status'] || 'Paid',
-      dueDate: r.dueDate || r['Due Date'] || '',
-      notes: r.notes || r['Notes'] || '',
-      executive: r.executive || r['Executive / Staff'] || '',
-      executiveExpense: String(r['Executive Expense (₹)'] || r.executiveExpense || ''),
-      cashGiven: String(r['Cash Given (₹)'] || r.cashGiven || ''),
+      id: r.id,
+      'Src Row': r['Src Row'] || r.id,
+      date:             r['Date']                 || r.date             || today(),
+      type:             r['Type']                 || r.type             || 'Income',
+      category:         r['Category']             || r.category         || '',
+      subcategory:      r['Subcategory']           || r.subcategory      || '',
+      clientVendor:     r['Client / Vendor']       || r.clientVendor     || '',
+      projectReference: r['Project / Reference']   || r.projectReference || '',
+      paymentMode:      r['Payment Mode']          || r.paymentMode      || 'Cash',
+      invoiceNo:        r['Invoice No']            || r.invoiceNo        || '',
+      debit:            String(r._debit            || ''),
+      credit:           String(r._credit           || ''),
+      status:           r['Status']                || r.status           || 'Paid',
+      dueDate:          r['Due Date']              || r.dueDate          || '',
+      notes:            r['Notes']                 || r.notes            || '',
+      executive:        r['Executive / Staff']     || r.executive        || '',
+      cashGiven:        String(r['Cash Given (\u20b9)'] || r.cashGiven  || ''),
     });
     setMode('edit'); setModal(true);
   };
@@ -123,26 +125,33 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
     e.preventDefault();
     if (!form.date) return toast.error('Date required');
     setSaving(true);
-    const lt = toast.loading('Saving…');
+    const lt = toast.loading('Saving\u2026');
     const di = parseDateInfo(form.date);
     const debitVal  = Math.floor(Number(form.debit)  || 0);
     const creditVal = Math.floor(Number(form.credit) || 0);
+    const netVal    = creditVal - debitVal;
+    const cashGivenVal = Math.floor(Number(form.cashGiven) || 0);
+    // Payload keys MUST exactly match Google Sheet column headers
     const payload = {
-      id: form.id, 'Src Row': form['Src Row'],
-      date: form.date, 'Month #': di.monthNum, year: di.year,
-      type: form.type, category: form.category, subcategory: form.subcategory,
-      clientVendor: form.clientVendor, projectReference: form.projectReference,
-      paymentMode: form.paymentMode, invoiceNo: form.invoiceNo,
-      debit: debitVal, credit: creditVal, net: creditVal - debitVal,
-      status: form.status, dueDate: form.dueDate, notes: form.notes,
-      executive: form.executive, executiveExpense: Number(form.executiveExpense)||0,
-      cashGiven: Number(form.cashGiven)||0,
-      'Client / Vendor': form.clientVendor, 'Project / Reference': form.projectReference,
-      'Payment Mode': form.paymentMode, 'Invoice No': form.invoiceNo,
-      'Debit (₹)': debitVal, 'Credit (₹)': creditVal, 'Net (₹)': creditVal - debitVal,
-      'Due Date': form.dueDate, 'Executive / Staff': form.executive,
-      'Executive Expense (₹)': Number(form.executiveExpense)||0,
-      'Cash Given (₹)': Number(form.cashGiven)||0,
+      'Src Row':               form['Src Row'],
+      'Date':                  form.date,
+      'Month #':               di.monthNum,
+      'Year':                  di.year,
+      'Type':                  form.type,
+      'Category':              form.category,
+      'Subcategory':           form.subcategory,
+      'Client / Vendor':       form.clientVendor,
+      'Project / Reference':   form.projectReference,
+      'Payment Mode':          form.paymentMode,
+      'Invoice No':            form.invoiceNo,
+      'Debit (\u20b9)':        debitVal,
+      'Credit (\u20b9)':       creditVal,
+      'Net (\u20b9)':          netVal,
+      'Status':                form.status,
+      'Due Date':              form.dueDate,
+      'Notes':                 form.notes,
+      'Executive / Staff':     form.executive,
+      'Cash Given (\u20b9)':   cashGivenVal,
     };
     try {
       const res = await updateSheetData(mode, 'Ledger', payload);
