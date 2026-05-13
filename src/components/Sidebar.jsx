@@ -8,7 +8,9 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  StickyNote
+  StickyNote,
+  BookOpen,
+  Bot
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import { Link, useLocation } from 'react-router-dom';
@@ -19,6 +21,8 @@ const menuItems = [
   { id: 'clients',   path: '/clients',   label: 'Clients',   icon: Briefcase },
   { id: 'expenses',  path: '/expenses',  label: 'Expenses',  icon: Receipt },
   { id: 'notes',     path: '/notes',     label: 'Notes',     icon: StickyNote },
+  { id: 'journal',   path: '/journal',   label: 'Journal',   icon: BookOpen },
+  { id: 'ai-assistant', path: '/ai-assistant', label: 'AI Assistant', icon: Bot },
 ];
 
 const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, onLogout }) => {
@@ -208,7 +212,7 @@ const Sidebar = ({ collapsed, setCollapsed, mobileMenuOpen, setMobileMenuOpen, o
   const MobileBottomNav = (
     <nav className="mobile-bottom-nav">
       <div className="grid grid-cols-5 h-[68px] max-w-md mx-auto px-1">
-        {menuItems.map((item) => {
+        {menuItems.slice(0, 5).map((item) => {
           const active = isActive(item);
           return (
             <Link

@@ -1,0 +1,43 @@
+# ERP Dashboard - Project Summary
+
+## Project Overview
+This project is a modern, responsive ERP Dashboard built with React and styled with Tailwind CSS. It connects to a Google Sheet backend via a Google Apps Script API to manage business data including employees, clients, expenses, notes, and a general ledger.
+
+## Technology Stack
+- **Frontend Framework**: React (with Vite)
+- **Styling**: Tailwind CSS (Vanilla CSS for custom styles)
+- **Icons**: Lucide React
+- **Charts**: Recharts (for data visualization)
+- **PDF Export**: jsPDF & jsPDF-AutoTable
+- **Notifications**: React Hot Toast
+- **Routing**: React Router DOM
+- **Backend**: Google Sheets (via custom Apps Script API)
+
+## Key Features & Modules
+1. **Overview / Dashboard**: Displays key metrics, charts, and summary data.
+2. **Employee Manager**: Tracks employee ledgers, payments, and balances.
+3. **Client Manager**: Manages client details, revenue, and services.
+4. **Expense Tracker**: Monitors and categorizes business expenses with charts.
+5. **Notes Manager**: A sticky notes interface for quick reminders.
+6. **General Ledger (New)**: Tracks all financial transactions with fields for Debit, Credit, Net, and Status.
+
+## File Structure (Key Files)
+- `src/App.jsx`: Main application shell, routing, and data loading.
+- `src/services/googleSheets.js`: Service for fetching and updating data from Google Sheets.
+- `src/components/Sidebar.jsx`: Responsive sidebar with navigation.
+- `src/components/Dashboard.jsx`: Dashboard view with charts and cards.
+- `src/components/LedgerManager.jsx`: Component for managing the General Ledger.
+- `src/components/ExpenseManager.jsx`: Component for managing expenses.
+- `src/components/EmployeeManager.jsx`: Component for managing employees.
+- `src/components/ClientManager.jsx`: Component for managing clients.
+- `src/components/NotesManager.jsx`: Component for managing sticky notes.
+
+## Recent Updates
+- Created the `LedgerManager` component with custom headers specified by the user.
+- Integrated the Ledger into the sidebar and main routing.
+- Updated the Google Sheets service to handle ledger data.
+
+## How to Run the Project
+1. Install dependencies: `npm install`
+2. Run development server: `npm run dev`
+3. Build for production: `npm run build`

@@ -1,5 +1,5 @@
 // Google Sheets Service
-const API_URL = 'https://script.google.com/macros/s/AKfycbwq16XRCCghogHYD66M6KRio41Pv7OshKyFITWkR-SFWbHMCbCcRrb6KaInLiqjyW_C/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxx26zTzZRVmxI2OBZkQZ_-OnfS821L_PcEl7iYrnXJfk8TLF35Fyk3EX52YfFaMggg/exec';
 
 // Mock data updated to match your spreadsheet columns
 const MOCK_DATA = {
@@ -42,6 +42,7 @@ const MOCK_DATA = {
   notes: [
     { id: 1, title: 'Welcome to Notes', content: 'This is a sample sticky note. You can add, edit, or delete notes here.', color: 'bg-yellow-100', date: new Date().toISOString() }
   ],
+  ledger: [],
   password: '2036'
 };
 
@@ -65,6 +66,9 @@ export const fetchData = async () => {
       clients: cleanData(data.clients || []),
       expenses: cleanData(data.expenses || []),
       notes: cleanData(data.notes || []),
+      ledger: cleanData(data.ledger || []),
+      invoices: cleanData(data.invoices || []),
+      events: cleanData(data.events || []), // Added
       password: data.password ? data.password.toString() : MOCK_DATA.password
     };
   } catch (error) {

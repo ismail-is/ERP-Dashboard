@@ -8,6 +8,8 @@ import { EmployeeManager } from './components/EmployeeManager';
 import { ClientManager } from './components/ClientManager';
 import { ExpenseManager } from './components/ExpenseManager';
 import { NotesManager } from './components/NotesManager';
+import { DailyJournal } from './components/DailyJournal';
+import AIAssistant from './components/AIAssistant';
 import { fetchData } from './services/googleSheets';
 import { Bell, User, Menu, Search, RefreshCw, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,7 +22,7 @@ function App() {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [data, setData] = useState({ employees: [], clients: [], expenses: [], notes: [], password: '' });
+  const [data, setData] = useState({ employees: [], clients: [], expenses: [], notes: [], ledger: [], password: '' });
   const [loading, setLoading] = useState(true);
   const [initialLoaded, setInitialLoaded] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -70,6 +72,8 @@ function App() {
     if (p === '/clients')    return 'Clients';
     if (p === '/expenses')   return 'Expenses';
     if (p === '/notes')      return 'Sticky Notes';
+    if (p === '/journal')    return 'Daily Journal';
+    if (p === '/ai-assistant') return 'AI Assistant';
     return p.slice(1).charAt(0).toUpperCase() + p.slice(2);
   };
 
@@ -80,6 +84,8 @@ function App() {
     if (p === '/clients')    return 'Track clients, revenue and project status.';
     if (p === '/expenses')   return 'Monitor and categorize business expenses.';
     if (p === '/notes')      return 'Jot down quick thoughts and important reminders.';
+    if (p === '/journal')    return 'Full monthly financial journal — all transactions.';
+    if (p === '/ai-assistant') return 'Ask questions about your business data.';
     return '';
   };
 
@@ -112,6 +118,14 @@ function App() {
 
         <Route path="/notes" element={
           <NotesManager notesData={data.notes} onDataChanged={() => loadData(true)} />
+        } />
+
+        <Route path="/journal" element={
+          <DailyJournal ledgerData={data.ledger} employeesData={data.employees} onDataChanged={() => loadData(true)} />
+        } />
+
+        <Route path="/ai-assistant" element={
+          <AIAssistant data={data} />
         } />
       </Routes>
     );
