@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { updateSheetData } from '../services/googleSheets';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-const fmt = (v) => v ? `₹${Math.floor(Number(v)||0).toLocaleString('en-IN')}` : '—';
+const fmt = (v) => (v || v === 0 || v === '0') ? `₹${Math.floor(Number(v)||0).toLocaleString('en-IN')}` : '—';
 const today = () => new Date().toISOString().split('T')[0];
 
 const INCOME_CATS = ['Investment','Live Streaming','Wedding','Rentals','Events','Social Media','Printing'];
@@ -52,6 +52,8 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
   const [search, setSearch]       = useState('');
   const [filterType, setFilterType] = useState('All');
   const [filterMonth, setFilterMonth] = useState('All');
+  const [filterCategory, setFilterCategory] = useState('All');
+  const [filterExecutive, setFilterExecutive] = useState('All');
   const [modal, setModal]         = useState(false);
   const [mode, setMode]           = useState('add');
   const [form, setForm]           = useState(blank());
@@ -80,6 +82,8 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
     let rows = enriched;
     if (filterType  !== 'All') rows = rows.filter(r => (r.type||r['Type']||'') === filterType);
     if (filterMonth !== 'All') rows = rows.filter(r => r._di.monthName === filterMonth);
+    if (filterCategory !== 'All') rows = rows.filter(r => (r.category||r['Category']||'') === filterCategory);
+    if (filterExecutive !== 'All') rows = rows.filter(r => (r.executive||r['Executive / Staff']||'') === filterExecutive);
     if (search.trim()) {
       const q = search.toLowerCase();
       rows = rows.filter(r =>
@@ -91,9 +95,11 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
       );
     }
     return rows;
-  }, [enriched, filterType, filterMonth, search]);
+  }, [enriched, filterType, filterMonth, search, filterCategory, filterExecutive]);
 
   const months = useMemo(() => [...new Set(enriched.map(r => r._di.monthName).filter(Boolean))], [enriched]);
+  const categories = useMemo(() => [...new Set(enriched.map(r => r.category || r['Category']).filter(Boolean))], [enriched]);
+  const executives = useMemo(() => [...new Set(enriched.map(r => r.executive || r['Executive / Staff']).filter(Boolean))], [enriched]);
   const totIncome  = filtered.filter(r => (r.type||r.Type) === 'Income').reduce((s,r) => s+r._credit, 0);
   const totExpense = filtered.filter(r => (r.type||r.Type) === 'Expense').reduce((s,r) => s+r._debit, 0);
 
@@ -101,7 +107,7 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
   const openEdit = (r) => {
     setForm({
       id: r.id,
-      'Src Row': r['Src Row'] || r.id,
+      'Src Row': r['Src Row'] || r.id || (r._idx ? r._idx + 1 : undefined),
       date:             r['Date']                 || r.date             || today(),
       type:             r['Type']                 || r.type             || 'Income',
       category:         r['Category']             || r.category         || '',
@@ -156,6 +162,25 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
     try {
       const res = await updateSheetData(mode, 'Ledger', payload);
       if (res.status === 'error') throw new Error(res.message);
+      
+      // Auto-sync to Employees sheet if category is Salary
+      if (mode === 'add' && form.category === 'Salary' && form.subcategory) {
+        const empPayload = {
+          'Date':                  form.date,
+          'Employee Name':         form.subcategory,
+          'Project / Reference':   form.projectReference,
+          'Client / Vendor':       form.clientVendor,
+          'Payment Mode':          form.paymentMode,
+          'Cash Given (₹)':        cashGivenVal,
+          'Expense (₹)':           0,
+          'Status':                form.status,
+          'Notes':                 form.notes,
+          'Src Row':               Date.now().toString(),
+        };
+        Object.keys({ ...empPayload }).forEach(k => { empPayload[k + ' '] = empPayload[k]; empPayload[k + '\n'] = empPayload[k]; empPayload[k + '\r'] = empPayload[k]; });
+        await updateSheetData('add', 'Employees', empPayload);
+      }
+
       toast.success(mode === 'add' ? 'Entry added!' : 'Entry updated!', { id: lt });
       setModal(false); onDataChanged?.();
     } catch (err) {
@@ -167,10 +192,40 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
     if (!delTarget) return;
     setDeleting(true);
     const lt = toast.loading('Deleting…');
-    const srcRow = delTarget['Src Row'] || delTarget.id;
+    const srcRow = delTarget['Src Row'] || delTarget.id || (delTarget._idx ? delTarget._idx + 1 : undefined);
     try {
       const res = await updateSheetData('delete', 'Ledger', { ...delTarget, 'Src Row': srcRow });
       if (res.status === 'error') throw new Error(res.message);
+      
+      // Auto-delete from Employees sheet if category is Salary
+      if (delTarget.category === 'Salary' && delTarget.subcategory) {
+        const matchingEmpRow = employeesData.find(e => {
+          const eName = (e['Employee Name'] || '').trim();
+          const dName = (delTarget.subcategory || '').trim();
+          
+          const eDateStr = e['Date'] || e.date || '';
+          const dDateStr = delTarget.date || delTarget['Date'] || '';
+          const eDateObj = new Date(eDateStr);
+          const dDateObj = new Date(dDateStr);
+          const datesMatch = !isNaN(eDateObj) && !isNaN(dDateObj) &&
+                             eDateObj.getFullYear() === dDateObj.getFullYear() &&
+                             eDateObj.getMonth() === dDateObj.getMonth() &&
+                             eDateObj.getDate() === dDateObj.getDate();
+          
+          const eAmt = Number(e['Cash Given (₹)'] || e.cashGiven || 0);
+          const dAmt = Number(delTarget.cashGiven || 0);
+          
+          return eName === dName && datesMatch && eAmt === dAmt;
+        });
+        
+        if (matchingEmpRow) {
+          const empSrcRow = matchingEmpRow['Src Row'] || matchingEmpRow.id;
+          if (empSrcRow) {
+            await updateSheetData('delete', 'Employees', { 'Src Row': empSrcRow });
+          }
+        }
+      }
+
       toast.success('Deleted!', { id: lt }); setDelTarget(null); onDataChanged?.();
     } catch (err) {
       toast.error('Error: ' + err.message, { id: lt });
@@ -205,6 +260,16 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
             <option value="All">All Types</option>
             <option value="Income">Income</option>
             <option value="Expense">Expense</option>
+          </select>
+          <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)}
+            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium outline-none appearance-none min-h-[42px]">
+            <option value="All">All Categories</option>
+            {categories.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <select value={filterExecutive} onChange={e => setFilterExecutive(e.target.value)}
+            className="px-3 py-2.5 bg-white border border-gray-200 rounded-xl text-sm font-medium outline-none appearance-none min-h-[42px]">
+            <option value="All">All Staff</option>
+            {executives.map(ex => <option key={ex}>{ex}</option>)}
           </select>
           <button onClick={openAdd} className="premium-button text-sm">
             <Plus size={14} strokeWidth={2.5}/> Add Entry
@@ -323,18 +388,20 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
                 {/* Category */}
                 <div>
                   <label className="block text-sm font-bold mb-1 text-gray-700">Category</label>
-                  <select className="premium-input" value={form.category} onChange={e => { set('category', e.target.value); set('subcategory',''); }}>
-                    <option value="">— Select —</option>
-                    {cats.map(c => <option key={c}>{c}</option>)}
-                  </select>
+                  <input type="text" list="journal-cats" className="premium-input" value={form.category} onChange={e => { set('category', e.target.value); set('subcategory',''); }} placeholder="Select or type category…"/>
+                  <datalist id="journal-cats">
+                    {cats.map(c => <option key={c} value={c} />)}
+                  </datalist>
                 </div>
                 {/* Subcategory */}
                 <div>
-                  <label className="block text-sm font-bold mb-1 text-gray-700">Subcategory</label>
-                  <select className="premium-input" value={form.subcategory} onChange={e => set('subcategory', e.target.value)}>
-                    <option value="">— Select —</option>
-                    {subcats.map(s => <option key={s}>{s}</option>)}
-                  </select>
+                  <label className="block text-sm font-bold mb-1 text-gray-700">
+                    Subcategory {form.category === 'Salary' && <span className="text-red-500">*</span>}
+                  </label>
+                  <input type="text" list="journal-subcats" required={form.category === 'Salary'} className="premium-input" value={form.subcategory} onChange={e => set('subcategory', e.target.value)} placeholder="Select or type subcategory…"/>
+                  <datalist id="journal-subcats">
+                    {subcats.map(s => <option key={s} value={s} />)}
+                  </datalist>
                 </div>
                 {/* Client/Vendor */}
                 <div>
@@ -383,9 +450,10 @@ export const DailyJournal = ({ ledgerData = [], employeesData = [], onDataChange
                 {/* Executive */}
                 <div>
                   <label className="block text-sm font-bold mb-1 text-gray-700">Executive / Staff</label>
-                  <select className="premium-input" value={form.executive} onChange={e => set('executive', e.target.value)}>
-                    {EXECUTIVES.map(ex => <option key={ex}>{ex}</option>)}
-                  </select>
+                  <input type="text" list="journal-execs" className="premium-input" value={form.executive} onChange={e => set('executive', e.target.value)} placeholder="Select or type staff…"/>
+                  <datalist id="journal-execs">
+                    {employeeNames.map(ex => <option key={ex} value={ex} />)}
+                  </datalist>
                 </div>
                 {/* Cash Given */}
                 <div>

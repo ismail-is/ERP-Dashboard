@@ -313,30 +313,22 @@ export const LedgerManager = ({ ledgerData = [], onDataChanged }) => {
           <table className="data-table">
             <thead>
               <tr>
-                {['Date', 'Type', 'Category', 'Client / Vendor', 'Invoice No', 'Debit (₹)', 'Credit (₹)', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}
+                {['ID', 'Date', 'Particulars', 'Debit (₹)', 'Credit (₹)', 'Balance (₹)', 'Status', 'Actions'].map(h => <th key={h}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {filtered.map((row, i) => (
                 <tr key={i}>
-                  <td className="text-gray-500">{row._parsed?.iso || row.date || '—'}</td>
-                  <td>
-                    <span className={cn(
-                      'inline-flex items-center px-2 py-1 rounded-md text-xs font-bold',
-                      row.type === 'Income' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
-                    )}>
-                      {row.type || '—'}
-                    </span>
-                  </td>
-                  <td className="font-semibold text-gray-900">{row.category || '—'}</td>
-                  <td className="text-gray-600">{row.clientVendor || '—'}</td>
-                  <td className="text-gray-500 font-mono text-xs">{row.invoiceNo || '—'}</td>
-                  <td className="font-bold text-red-600">{row.debit ? fmt(row.debit) : '—'}</td>
-                  <td className="font-bold text-green-600">{row.credit ? fmt(row.credit) : '—'}</td>
+                  <td className="text-gray-500 font-mono text-xs">{row.id || '—'}</td>
+                  <td className="text-gray-500">{row.Date || row.date || '—'}</td>
+                  <td className="font-semibold text-gray-900">{row.Particulars || row.particulars || '—'}</td>
+                  <td className="font-bold text-red-600">{row.Debit ? fmt(row.Debit) : (row.debit ? fmt(row.debit) : '—')}</td>
+                  <td className="font-bold text-green-600">{row.Credit ? fmt(row.Credit) : (row.credit ? fmt(row.credit) : '—')}</td>
+                  <td className="font-bold text-gray-900">{row.Balance ? fmt(row.Balance) : (row.balance ? fmt(row.balance) : '—')}</td>
                   <td>
                     <div className="flex items-center gap-1.5">
-                      {getStatusIcon(row.status)}
-                      <span className="text-xs font-medium text-gray-700">{row.status || '—'}</span>
+                      {getStatusIcon(row.Status || row.status)}
+                      <span className="text-xs font-medium text-gray-700">{row.Status || row.status || '—'}</span>
                     </div>
                   </td>
                   <td>
@@ -438,7 +430,7 @@ export const LedgerManager = ({ ledgerData = [], onDataChanged }) => {
                   <label className="block text-sm font-bold mb-2 text-gray-700">Debit (₹)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
-                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input pl-8"
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input !pl-6"
                       value={formData.debit} onChange={e => setFormData(p => ({ ...p, debit: e.target.value.replace(/[^0-9]/g, ''), credit: '' }))} />
                   </div>
                 </div>
@@ -446,7 +438,7 @@ export const LedgerManager = ({ ledgerData = [], onDataChanged }) => {
                   <label className="block text-sm font-bold mb-2 text-gray-700">Credit (₹)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
-                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input pl-8"
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input !pl-6"
                       value={formData.credit} onChange={e => setFormData(p => ({ ...p, credit: e.target.value.replace(/[^0-9]/g, ''), debit: '' }))} />
                   </div>
                 </div>

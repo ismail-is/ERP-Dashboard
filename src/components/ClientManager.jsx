@@ -29,7 +29,7 @@ const CHART_COLORS = ['#111827', '#374151', '#6b7280', '#9ca3af', '#d1d5db'];
 
 const parseAmt = (v) => Math.floor(Number(v) || 0);
 const fmt      = (v) => `₹${parseAmt(v).toLocaleString('en-IN')}`;
-const emptyForm = () => ({ name: '', services: '', status: 'Pending', amount: '' });
+const emptyForm = () => ({ name: '', date: new Date().toISOString().split('T')[0], services: '', status: 'Pending', amount: '' });
 
 /* ══════════════════════════════════════════════════════════════ */
 export const ClientManager = ({ clientsData = [], onDataChanged }) => {
@@ -107,7 +107,9 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
       const srcRow = row['Src Row'] || row.id;
       setFormData({
         _originalRow: row, id: row.id, 'Src Row': srcRow,
-        name: row.name || '', services: row.services || '',
+        name: row.name || '',
+        date: row.date || '',
+        services: row.services || '',
         status: row.status || 'Pending',
         amount: String(parseAmt(row.amount) || ''),
       });
@@ -126,7 +128,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
     const srcRow  = formData['Src Row'] || formData.id;
     setIsSubmitting(true);
     const lt = toast.loading('Saving…');
-    const payload = { id: formData.id, 'Src Row': srcRow, name: formData.name.trim(), services: formData.services.trim(), status: formData.status, amount: amtVal };
+    const payload = { id: formData.id, 'Src Row': srcRow, name: formData.name.trim(), date: formData.date, services: formData.services.trim(), status: formData.status, amount: amtVal };
     Object.keys({ ...payload }).forEach(k => { payload[k + ' '] = payload[k]; payload[k + '\n'] = payload[k]; payload[k + '\r'] = payload[k]; });
     try {
       const result = await updateSheetData(formMode, 'Clients', payload);
@@ -259,7 +261,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-[14px] text-gray-900 truncate">{row.name || '—'}</p>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{row.services || 'No service listed'}</p>
+                      <p className="text-xs text-gray-400 truncate mt-0.5">{row.date || 'No date'} · {row.services || 'No service listed'}</p>
                     </div>
                     <span className={cn('badge flex-shrink-0', sc.bg, sc.text)}>
                       <Icon size={10} strokeWidth={2.5} />{row.status || '—'}
@@ -290,7 +292,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
               <table className="data-table">
                 <thead>
                   <tr>
-                    {['Client', 'Services', 'Revenue', 'Status', 'Actions'].map(h => (
+                    {['Date', 'Client', 'Services', 'Revenue', 'Status', 'Actions'].map(h => (
                       <th key={h}>{h}</th>
                     ))}
                   </tr>
@@ -301,6 +303,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                     const Icon = sc.icon;
                     return (
                       <tr key={i}>
+                        <td className="text-gray-500">{row.date || '—'}</td>
                         <td className="font-bold text-gray-900">{row.name || '—'}</td>
                         <td className="text-gray-500">{row.services || '—'}</td>
                         <td className="font-bold text-gray-900">{fmt(row.amount)}</td>
@@ -362,6 +365,13 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                 </div>
 
                 <div>
+                  <label className="block text-sm font-bold mb-2 text-gray-700">Date <span className="text-red-500">*</span></label>
+                  <input required type="date" className="premium-input"
+                    value={formData.date}
+                    onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} />
+                </div>
+
+                <div>
                   <label className="block text-sm font-bold mb-2 text-gray-700">Services</label>
                   <input type="text" placeholder="e.g. Wedding Photography"
                     className="premium-input"
@@ -382,7 +392,7 @@ export const ClientManager = ({ clientsData = [], onDataChanged }) => {
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
                     <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
-                      className="premium-input pl-8"
+                      className="premium-input !pl-6"
                       value={formData.amount}
                       onChange={e => setFormData(p => ({ ...p, amount: e.target.value.replace(/[^0-9]/g, '') }))} />
                   </div>

@@ -264,7 +264,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
-                    className="premium-input pl-8"
+                    className="premium-input !pl-6"
                     value={formData['Cash Given (₹)'] || ''}
                     onChange={handleInt('Cash Given (₹)')} />
                 </div>
@@ -276,7 +276,7 @@ export const EmployeeManager = ({ employeesData, onDataChanged }) => {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
                   <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0"
-                    className="premium-input pl-8"
+                    className="premium-input !pl-6"
                     value={formData['Expense (₹)'] || ''}
                     onChange={handleInt('Expense (₹)')} />
                 </div>

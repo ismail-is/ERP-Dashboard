@@ -354,7 +354,7 @@ export const ExpenseManager = ({ expensesData = [], onDataChanged }) => {
                   <label className="block text-sm font-bold mb-2 text-gray-700">Amount (₹)</label>
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm pointer-events-none">₹</span>
-                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input pl-8"
+                    <input type="text" inputMode="numeric" pattern="[0-9]*" placeholder="0" className="premium-input !pl-6"
                       value={formData.amount} onChange={e => setFormData(p => ({ ...p, amount: e.target.value.replace(/[^0-9]/g, '') }))} />
                   </div>
                   {formData.amount !== '' && <p className="text-xs text-gray-400 mt-1.5 font-medium">= {fmt(formData.amount)}</p>}

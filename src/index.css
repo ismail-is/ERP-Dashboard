@@ -403,7 +403,7 @@ select.premium-input {
    PAGE CONTENT AREA
    ============================================================ */
 .page-content {
-  padding: 1rem;
+  padding: 1.25rem;
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
@@ -443,7 +443,7 @@ select.premium-input {
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 @media (min-width: 640px) {
@@ -465,7 +465,7 @@ select.premium-input {
 .controls-row {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 @media (min-width: 640px) {
